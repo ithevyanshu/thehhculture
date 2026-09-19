@@ -12,11 +12,11 @@ import { trendingIds } from '../catalog/views';
 import { usersAdminRouter } from './users.admin.routes';
 import { showsAdminRouter } from './shows.admin.routes';
 import { slugify, uniqueSlug } from '../../lib/slug';
-import { requireAuth, requireRole } from '../../middleware/auth';
+import { requireAuth, requireStaff } from '../../middleware/auth';
 import { albumCardSelect, artistCardSelect, songCardSelect } from '../catalog/selects';
 
 export const adminRouter = Router();
-adminRouter.use(requireAuth, requireRole(Role.ADMIN));
+adminRouter.use(requireAuth, requireStaff);
 adminRouter.use(siteAdminRouter);
 adminRouter.use(usersAdminRouter);
 adminRouter.use(suggestionsAdminRouter);

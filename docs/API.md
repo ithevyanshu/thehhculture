@@ -26,6 +26,7 @@ Refresh tokens rotate on every use. Re-using an old token (after a 30s grace win
 | POST | `/auth/refresh` | cookie / body | → `{ user, accessToken }` |
 | POST | `/auth/logout` | cookie / body | revokes the refresh token, 204 |
 | GET | `/auth/me` | ✔ | → `{ user }` |
+| POST | `/auth/password` | ✔ | `{ currentPassword, newPassword }` → `{ user }`; clears `mustChangePassword` after an admin reset |
 
 ## Catalog (public; personal flags such as `isFollowing` / `isLiked` are filled when a token is sent)
 
@@ -110,7 +111,9 @@ Admin: `GET/POST /admin/shows`, `GET/PATCH/DELETE /admin/shows/:id`, `POST /admi
 
 `GET /artists?sort=trending` ranks by de-duplicated profile clicks over the last 7 days (then all-time clicks, then followers); items include `views: { week, allTime }`.
 
-## Admin (✔ role `ADMIN`)
+## Admin (✔ role `ADMIN`, or `SUB_ADMIN` for granted sections)
+
+Sub-admins pass only for routes their `permissions` open (`artists`, `albums`, `songs`, `taxonomy`, `shows`, `frontPage`, `suggestions`, `users`; see `backend/src/lib/permissions.ts`); anything else is 403. `/admin/stats` is open to all staff.
 
 | Method | Path | Notes |
 |---|---|---|
@@ -118,7 +121,8 @@ Admin: `GET/POST /admin/shows`, `GET/PATCH/DELETE /admin/shows/:id`, `POST /admi
 | GET | `/admin/site-config` | `{ config, builtins, refs }`: the whole front-page config plus names for every referenced song/artist |
 | PUT | `/admin/site-config/:key` | key ∈ `coverStory`, `sections`, `chart`, `ticker`, `announcement`, `issue`; body = that setting (validated) |
 | GET | `/admin/users` | `q, role, status=active\|disabled, page, limit` |
-| PATCH | `/admin/users/:id` | `{ role?: USER\|ADMIN, disabled? }`: signs the user out everywhere; can't target yourself or the last admin |
+| PATCH | `/admin/users/:id` | `{ role?: USER\|SUB_ADMIN\|ADMIN, permissions?: string[], disabled? }`: role/disable sign the user out everywhere; can't target yourself or the last admin. Role and permissions are full-admin only; sub-admins may only act on regular users |
+| POST | `/admin/users/:id/reset-password` | → `{ temporaryPassword }` (shown once); signs the user out and sets `mustChangePassword`. Not for your own account |
 | GET | `/admin/suggestions` | `status, type, q, page, limit` → items + `counts` per status |
 | PATCH / DELETE | `/admin/suggestions/:id` | `{ status?, adminNote? }` |
 | GET/POST/PATCH/DELETE | `/admin/artists[/:id]` | `{ name, slug?, realName?, bio?, imageUrl?, bannerUrl?, activeSince?, verified?, featured?, regionSlug?, genreSlugs?, instagramUrl?, youtubeUrl?, spotifyUrl?, spotifyId? }` |

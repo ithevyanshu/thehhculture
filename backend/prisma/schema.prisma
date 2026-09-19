@@ -20,6 +20,7 @@ datasource db {
 enum Role {
   USER
   ADMIN
+  SUB_ADMIN // admin-panel access limited to User.permissions
   ARTIST // reserved: artist-managed profiles (not yet exposed)
 }
 
@@ -43,6 +44,10 @@ model User {
   role         Role     @default(USER)
   onboarded    Boolean  @default(false)
   disabled     Boolean  @default(false) // blocked by an admin: cannot sign in or refresh
+  /// SUB_ADMIN only: admin sections they may use (see src/lib/permissions.ts).
+  permissions  String[] @default([])
+  /// Set by an admin password reset: the user must choose a new password after signing in.
+  mustChangePassword Boolean @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

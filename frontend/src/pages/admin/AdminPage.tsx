@@ -15,8 +15,22 @@ import { SuggestionsAdmin } from './SuggestionsAdmin';
 import { ShowsAdmin } from './ShowsAdmin';
 import { useDialog } from '../../components/Dialog';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../../auth/AuthContext';
+import { can, type Permission } from '../../lib/permissions';
 
 type Tab = 'Overview' | 'Front page' | 'Artists' | 'Albums' | 'Songs' | 'Shows' | 'Taxonomy' | 'Suggestions' | 'Users';
+
+/** Permission each tab needs (Overview is open to all staff). */
+const TAB_PERMISSION: Record<Exclude<Tab, 'Overview'>, Permission> = {
+  'Front page': 'frontPage',
+  Artists: 'artists',
+  Albums: 'albums',
+  Songs: 'songs',
+  Shows: 'shows',
+  Taxonomy: 'taxonomy',
+  Suggestions: 'suggestions',
+  Users: 'users',
+};
 type Editing = { kind: 'artist' | 'album' | 'song'; id: string | null } | null;
 
 // ---------- helpers ----------
@@ -1009,12 +1023,12 @@ function TopArtistList({ title, items, metric }: { title: string; items: AdminSt
   );
 }
 
-function Overview({ openSuggestions }: { openSuggestions: () => void }) {
+function Overview({ openSuggestions }: { openSuggestions?: () => void }) {
   const { data } = useQuery({ queryKey: ['admin', 'stats'], queryFn: () => api<AdminStats>('/admin/stats') });
   if (!data) return <Spinner />;
   return (
     <div className="space-y-8">
-      {data.newSuggestions > 0 && (
+      {data.newSuggestions > 0 && openSuggestions && (
         <button onClick={openSuggestions} className="flex w-full items-center justify-between border-2 border-ink bg-neon p-4 text-left shadow-hard">
           <span className="display text-2xl">
             {data.newSuggestions} new suggestion{data.newSuggestions === 1 ? '' : 's'} waiting
@@ -1054,11 +1068,13 @@ export function AdminPage() {
     qc.invalidateQueries();
   };
 
-  const tabs: Tab[] = ['Overview', 'Front page', 'Artists', 'Albums', 'Songs', 'Shows', 'Taxonomy', 'Suggestions', 'Users'];
+  const { user } = useAuth();
+  const allTabs: Tab[] = ['Overview', 'Front page', 'Artists', 'Albums', 'Songs', 'Shows', 'Taxonomy', 'Suggestions', 'Users'];
+  const tabs = allTabs.filter((t) => t === 'Overview' || can(user, TAB_PERMISSION[t]));
 
   return (
     <div className="mx-auto max-w-6xl">
-      <span className="sticker">Admin</span>
+      <span className="sticker">{user?.role === 'SUB_ADMIN' ? 'Sub-admin' : 'Admin'}</span>
       <h1 className="display mt-3 mb-6 text-5xl md:text-7xl">Catalog control</h1>
       <div className="scrollbar-none mb-8 flex gap-2 overflow-x-auto">
         {tabs.map((t) => (
@@ -1068,7 +1084,7 @@ export function AdminPage() {
         ))}
       </div>
 
-      {tab === 'Overview' && <Overview openSuggestions={() => setTab('Suggestions')} />}
+      {tab === 'Overview' && <Overview openSuggestions={can(user, 'suggestions') ? () => setTab('Suggestions') : undefined} />}
       {tab === 'Suggestions' && <SuggestionsAdmin />}
       {tab === 'Shows' && <ShowsAdmin />}
       {tab === 'Artists' && <ArtistsAdmin edit={(id) => setEditing({ kind: 'artist', id })} />}

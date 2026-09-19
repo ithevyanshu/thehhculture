@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
+import { randomBytes } from 'crypto';
 import { prisma } from '../../lib/prisma';
-import { conflict, forbidden, unauthorized } from '../../lib/http';
+import { badRequest, conflict, forbidden, unauthorized } from '../../lib/http';
 import { env } from '../../config/env';
 import { generateRefreshToken, hashToken, signAccessToken } from './tokens';
 
@@ -15,6 +16,8 @@ export const publicUserSelect = {
   avatarUrl: true,
   bio: true,
   role: true,
+  permissions: true,
+  mustChangePassword: true,
   onboarded: true,
   createdAt: true,
   favoriteGenres: { select: { id: true, slug: true, name: true } },
@@ -115,4 +118,38 @@ export async function logout(rawToken: string | undefined) {
     where: { tokenHash: hashToken(rawToken), revokedAt: null },
     data: { revokedAt: new Date() },
   });
+}
+
+export const passwordRule = { min: 8, max: 128 } as const;
+
+/** Signed-in password change; also clears the "must change" flag left by an admin reset. */
+export async function changePassword(userId: string, currentPassword: string, newPassword: string) {
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { passwordHash: true } });
+  if (!user?.passwordHash || !(await bcrypt.compare(currentPassword, user.passwordHash))) {
+    throw unauthorized('Current password is incorrect');
+  }
+  if (currentPassword === newPassword) throw badRequest('Pick a password different from the current one');
+  await prisma.user.update({
+    where: { id: userId },
+    data: { passwordHash: await bcrypt.hash(newPassword, 12), mustChangePassword: false },
+  });
+  return (await getPublicUser(userId))!;
+}
+
+/**
+ * Admin reset: a random temporary password (shown once to the admin), every session
+ * signed out, and a new password required at the next sign-in.
+ */
+export async function resetPassword(userId: string) {
+  const alphabet = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no 0/O/1/l/I lookalikes
+  const bytes = randomBytes(12);
+  const temporaryPassword = Array.from(bytes, (b) => alphabet[b % alphabet.length]).join('');
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash: await bcrypt.hash(temporaryPassword, 12), mustChangePassword: true },
+    }),
+    prisma.refreshToken.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date() } }),
+  ]);
+  return temporaryPassword;
 }

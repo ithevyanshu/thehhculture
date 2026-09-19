@@ -3,6 +3,7 @@ import { useAuth } from '../auth/AuthContext';
 import { api, ApiError } from '../lib/api';
 import type { User } from '../lib/types';
 import { TastePicker } from './TastePicker';
+import { PasswordForm } from '../components/PasswordForm';
 
 function ProfileForm() {
   const { user, setUser } = useAuth();
@@ -64,6 +65,10 @@ export function SettingsPage() {
       <section className="mb-14">
         <h2 className="display mb-4 text-3xl">Profile</h2>
         <ProfileForm />
+      </section>
+      <section className="mb-14">
+        <h2 className="display mb-4 text-3xl">Password</h2>
+        <PasswordForm />
       </section>
       <section className="mb-14">
         <p className="mb-6 text-sm text-muted">Your taste shapes the home screen. Follow artists and like songs to tune it even further.</p>

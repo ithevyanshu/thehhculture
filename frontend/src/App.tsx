@@ -19,13 +19,15 @@ import { LibraryPage } from './pages/LibraryPage';
 import { PlaylistPage } from './pages/PlaylistPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { AdminPage } from './pages/admin/AdminPage';
+import { ChangePasswordPage } from './pages/ChangePasswordPage';
+import { isStaff } from './lib/permissions';
 
-function RequireAuth({ children, role }: { children: ReactNode; role?: 'ADMIN' }) {
+function RequireAuth({ children, staff }: { children: ReactNode; staff?: boolean }) {
   const { user, loading } = useAuth();
   const location = useLocation();
   if (loading) return <Spinner />;
   if (!user) return <Navigate to={`/login?next=${encodeURIComponent(location.pathname)}`} replace />;
-  if (role && user.role !== role) return <Navigate to="/" replace />;
+  if (staff && !isStaff(user)) return <Navigate to="/" replace />;
   return children;
 }
 
@@ -68,7 +70,8 @@ export default function App() {
         <Route path="onboarding" element={<RequireAuth><OnboardingPage /></RequireAuth>} />
         <Route path="library" element={<RequireAuth><LibraryPage /></RequireAuth>} />
         <Route path="settings" element={<RequireAuth><SettingsPage /></RequireAuth>} />
-        <Route path="admin" element={<RequireAuth role="ADMIN"><AdminPage /></RequireAuth>} />
+        <Route path="admin" element={<RequireAuth staff><AdminPage /></RequireAuth>} />
+        <Route path="change-password" element={<RequireAuth><ChangePasswordPage /></RequireAuth>} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>

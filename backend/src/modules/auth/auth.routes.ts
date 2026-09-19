@@ -52,7 +52,7 @@ const registerSchema = z.object({
     .min(3)
     .max(24)
     .regex(/^[a-zA-Z0-9_.]+$/, 'Only letters, numbers, underscores and dots'),
-  password: z.string().min(8, 'Password must be at least 8 characters').max(128),
+  password: z.string().min(auth.passwordRule.min, 'Password must be at least 8 characters').max(auth.passwordRule.max),
   displayName: z.string().trim().max(50).optional(),
 });
 
@@ -90,4 +90,14 @@ authRouter.get('/me', requireAuth, async (req, res) => {
   const user = await auth.getPublicUser(currentUser(req).id);
   if (!user) throw notFound('User');
   res.json({ user });
+});
+
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, 'Enter your current password'),
+  newPassword: z.string().min(auth.passwordRule.min, 'Password must be at least 8 characters').max(auth.passwordRule.max),
+});
+
+authRouter.post('/password', authLimiter, requireAuth, async (req, res) => {
+  const { currentPassword, newPassword } = parse(changePasswordSchema, req.body);
+  res.json({ user: await auth.changePassword(currentUser(req).id, currentPassword, newPassword) });
 });

@@ -1,6 +1,6 @@
 // Mirrors the backend response shapes (see backend/src/modules/catalog/selects.ts).
 
-export type Role = 'USER' | 'ADMIN' | 'ARTIST';
+export type Role = 'USER' | 'ADMIN' | 'SUB_ADMIN' | 'ARTIST';
 export type AlbumType = 'ALBUM' | 'EP' | 'MIXTAPE' | 'SINGLE';
 
 export interface Taxon {
@@ -29,6 +29,10 @@ export interface User {
   avatarUrl: string | null;
   bio: string | null;
   role: Role;
+  /** SUB_ADMIN only: admin sections they may use. */
+  permissions: string[];
+  /** Set by an admin password reset: a new password is required before anything else. */
+  mustChangePassword: boolean;
   onboarded: boolean;
   createdAt: string;
   favoriteGenres: Taxon[];

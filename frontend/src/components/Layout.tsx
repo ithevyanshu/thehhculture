@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, NavLink, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, NavLink, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { LogOut, Search, Settings, Shield, User as UserIcon, X } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { useIssueNumber, useSite } from '../lib/queries';
@@ -8,6 +8,7 @@ import { issueDate } from '../lib/format';
 import { Artwork } from './Artwork';
 import { Wordmark } from './Wordmark';
 import { SmartLink } from './SmartLink';
+import { isStaff } from '../lib/permissions';
 import { FloatingSuggestButton, SuggestProvider, useSuggest } from './Suggest';
 
 const nav = [
@@ -102,7 +103,7 @@ function UserMenu() {
           <p className="mono truncate px-3 py-2 text-muted">@{user.username}</p>
           <MenuLink to="/library" icon={<UserIcon size={16} />} label="Your library" />
           <MenuLink to="/settings" icon={<Settings size={16} />} label="Settings & taste" />
-          {user.role === 'ADMIN' && <MenuLink to="/admin" icon={<Shield size={16} />} label="Admin panel" />}
+          {isStaff(user) && <MenuLink to="/admin" icon={<Shield size={16} />} label="Admin panel" />}
           <button
             onClick={async () => {
               await logout();
@@ -266,7 +267,10 @@ export function Layout() {
     window.scrollTo(0, 0);
   }, [location.pathname]);
 
-  const links = user?.role === 'ADMIN' ? [...nav, { to: '/admin', label: 'Admin', end: false }] : nav;
+  const links = isStaff(user) ? [...nav, { to: '/admin', label: 'Admin', end: false }] : nav;
+
+  // After an admin password reset, nothing else opens until a new password is chosen.
+  if (user?.mustChangePassword && location.pathname !== '/change-password') return <Navigate to="/change-password" replace />;
 
   return (
     <SuggestProvider>

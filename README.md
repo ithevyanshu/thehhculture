@@ -58,8 +58,12 @@ The two apps share no code. The backend is a plain JSON API that any client can 
   - Signed-in users send missing artists or songs, corrections and ideas from a floating button, empty search results, the footer, or artist and song pages.
   - Admins triage them in Admin → Suggestions: set a status, reply, or delete.
   - Users see the status and replies in their suggestion box.
-- **User management (Admin → Users)**: promote or demote admins and disable accounts. Disabling signs the user out everywhere, and the last active admin can't be removed.
-- **Roles**: `USER`, `ADMIN` (`ARTIST` is reserved; see the roadmap).
+- **User management (Admin → Users)**:
+  - Roles: user, sub-admin, admin. Disable accounts. Disabling or changing a role signs the user out everywhere, and the last active admin can't be removed.
+  - **Sub-admins** only get the admin sections an admin ticks for them (front page, artists, albums, songs, shows, genres & cities, suggestions, users). Access is checked on every request, so changes apply immediately.
+  - A sub-admin with "users" access can only disable or reset regular users; admins and sub-admins are managed by full admins.
+  - **Password reset** generates a temporary password (shown once) and signs the user out; they must choose a new one at their next sign-in. Everyone can change their password in Settings.
+- **Roles**: `USER`, `SUB_ADMIN`, `ADMIN` (`ARTIST` is reserved; see the roadmap).
 
 ## Getting started
 
