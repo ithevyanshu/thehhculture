@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowDown, ArrowUp, Eye, EyeOff, Plus, Trash2, X } from 'lucide-react';
 import { api, ApiError } from '../../lib/api';
-import { useArtists, useSongs } from '../../lib/queries';
+import { useArtists, useGenres, useRegions, useShows, useSongs } from '../../lib/queries';
 import { Artwork } from '../../components/Artwork';
 import { Spinner } from '../../components/ui';
 import { useDialog } from '../../components/Dialog';
@@ -10,7 +10,8 @@ import type { Tone } from '../../lib/types';
 
 // ---------- Types mirroring backend/src/modules/site/config.ts ----------
 
-interface CoverSlide {
+interface ArtistSlide {
+  type: 'artist';
   artistId: string | null; // null only while the editor hasn't picked yet
   songId: string | null;
   kicker: string | null;
@@ -18,6 +19,19 @@ interface CoverSlide {
   startsAt: string | null;
   endsAt: string | null;
 }
+interface NewsSlide {
+  type: 'news';
+  kicker: string | null;
+  headline: string;
+  body: string | null;
+  imageUrl: string | null;
+  linkUrl: string | null;
+  linkLabel: string | null;
+  artistIds: string[];
+  startsAt: string | null;
+  endsAt: string | null;
+}
+type CoverSlide = ArtistSlide | NewsSlide;
 interface CoverStory {
   mode: 'auto' | 'manual' | 'hidden';
   slides: CoverSlide[];
@@ -33,11 +47,18 @@ interface Announcement {
   tone: Tone;
   expiresAt: string | null;
 }
-type TickerItem = { type: 'song'; songId: string } | { type: 'text'; text: string; linkUrl: string | null };
+type TickerItem =
+  | { type: 'song'; songId: string }
+  | { type: 'artist'; artistId: string }
+  | { type: 'show'; showId: string }
+  | { type: 'text'; text: string; linkUrl: string | null };
 interface Ticker {
   mode: 'auto' | 'manual' | 'hidden';
   label: string;
   items: TickerItem[];
+  auto: { count: number; withinDays: number | null; genreSlugs: string[]; regionSlugs: string[] };
+  speed: 'slow' | 'normal' | 'fast';
+  tone: Tone;
 }
 interface SectionItem {
   key: string;
@@ -298,45 +319,51 @@ function IconBtn({ label, onClick, disabled, children }: { label: string; onClic
 // ---------- Panels ----------
 
 const MAX_SLIDES = 10;
-const EMPTY_SLIDE: CoverSlide = { artistId: null, songId: null, kicker: null, blurb: null, startsAt: null, endsAt: null };
+const EMPTY_ARTIST_SLIDE: ArtistSlide = { type: 'artist', artistId: null, songId: null, kicker: null, blurb: null, startsAt: null, endsAt: null };
+const EMPTY_NEWS_SLIDE: NewsSlide = {
+  type: 'news',
+  kicker: null,
+  headline: '',
+  body: null,
+  imageUrl: null,
+  linkUrl: null,
+  linkLabel: null,
+  artistIds: [],
+  startsAt: null,
+  endsAt: null,
+};
 
-function CoverSlideEditor({
+/** Slides the server would reject yet (no artist / no headline) are left out of a save. */
+const isComplete = (s: CoverSlide) => (s.type === 'artist' ? !!s.artistId : !!s.headline.trim());
+
+function ScheduleFields({ slide, onChange }: { slide: CoverSlide; onChange: (patch: { startsAt?: string | null; endsAt?: string | null }) => void }) {
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      <Field label="Starts">
+        <input type="datetime-local" className="input" value={toLocalInput(slide.startsAt)} onChange={(e) => onChange({ startsAt: fromLocalInput(e.target.value) })} />
+      </Field>
+      <Field label="Ends">
+        <input type="datetime-local" className="input" value={toLocalInput(slide.endsAt)} onChange={(e) => onChange({ endsAt: fromLocalInput(e.target.value) })} />
+      </Field>
+    </div>
+  );
+}
+
+function ArtistSlideFields({
   slide,
-  index,
-  total,
   refs,
   addRef,
   onChange,
-  onMove,
-  onRemove,
 }: {
-  slide: CoverSlide;
-  index: number;
-  total: number;
+  slide: ArtistSlide;
   refs: Refs;
   addRef: (r: SongRef | ArtistRef) => void;
-  onChange: (s: CoverSlide) => void;
-  onMove: (dir: -1 | 1) => void;
-  onRemove: () => void;
+  onChange: (s: ArtistSlide) => void;
 }) {
   const artist = slide.artistId ? refs.artists[slide.artistId] : null;
-  const set = (patch: Partial<CoverSlide>) => onChange({ ...slide, ...patch });
-
+  const set = (patch: Partial<ArtistSlide>) => onChange({ ...slide, ...patch });
   return (
-    <li className="border-2 border-ink bg-surface p-4">
-      <div className="mb-3 flex items-center gap-2">
-        <span className="mono">Slide {String(index + 1).padStart(2, '0')}</span>
-        <span className="flex-1" />
-        <IconBtn label="Move up" onClick={() => onMove(-1)} disabled={index === 0}>
-          <ArrowUp size={14} />
-        </IconBtn>
-        <IconBtn label="Move down" onClick={() => onMove(1)} disabled={index === total - 1}>
-          <ArrowDown size={14} />
-        </IconBtn>
-        <IconBtn label="Remove slide" onClick={onRemove}>
-          <Trash2 size={14} />
-        </IconBtn>
-      </div>
+    <>
       <div className="grid gap-4 md:grid-cols-2">
         <Field label="Artist *">
           {artist ? (
@@ -384,30 +411,146 @@ function CoverSlideEditor({
         <Field label="Sticker text" hint={'e.g. "Legacy S1 winner". Default: "Editor\'s pick"'}>
           <input className="input" maxLength={40} value={slide.kicker ?? ''} onChange={(e) => set({ kicker: e.target.value })} />
         </Field>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Starts">
-            <input
-              type="datetime-local"
-              className="input"
-              value={toLocalInput(slide.startsAt)}
-              onChange={(e) => set({ startsAt: fromLocalInput(e.target.value) })}
-            />
-          </Field>
-          <Field label="Ends">
-            <input
-              type="datetime-local"
-              className="input"
-              value={toLocalInput(slide.endsAt)}
-              onChange={(e) => set({ endsAt: fromLocalInput(e.target.value) })}
-            />
-          </Field>
-        </div>
+        <ScheduleFields slide={slide} onChange={set} />
       </div>
       <div className="mt-4">
         <Field label="Blurb" hint="Replaces the artist bio on the slide. Leave empty to use the bio.">
           <textarea className="input min-h-20" maxLength={500} value={slide.blurb ?? ''} onChange={(e) => set({ blurb: e.target.value })} />
         </Field>
       </div>
+    </>
+  );
+}
+
+function NewsSlideFields({
+  slide,
+  refs,
+  addRef,
+  onChange,
+}: {
+  slide: NewsSlide;
+  refs: Refs;
+  addRef: (r: SongRef | ArtistRef) => void;
+  onChange: (s: NewsSlide) => void;
+}) {
+  const set = (patch: Partial<NewsSlide>) => onChange({ ...slide, ...patch });
+  return (
+    <>
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="md:col-span-2">
+          <Field label="Headline *">
+            <input
+              className="input !text-base font-bold"
+              maxLength={120}
+              placeholder="e.g. Seedhe Maut announce India tour"
+              value={slide.headline}
+              onChange={(e) => set({ headline: e.target.value })}
+            />
+          </Field>
+        </div>
+        <Field label="Sticker text" hint={'e.g. "Breaking", "Tour", "Beef". Default: "News"'}>
+          <input className="input" maxLength={40} value={slide.kicker ?? ''} onChange={(e) => set({ kicker: e.target.value })} />
+        </Field>
+        <ScheduleFields slide={slide} onChange={set} />
+        <Field label="Image link" hint="An https:// image address (right-click an image → Copy image address). Optional.">
+          <input className="input" placeholder="https://…" value={slide.imageUrl ?? ''} onChange={(e) => set({ imageUrl: e.target.value })} />
+        </Field>
+        <div className="grid grid-cols-[1fr_10rem] gap-3">
+          <Field label="Read more link" hint="A page here (/shows/legacy) or a full https:// article link">
+            <input className="input" placeholder="/shows/… or https://…" value={slide.linkUrl ?? ''} onChange={(e) => set({ linkUrl: e.target.value })} />
+          </Field>
+          <Field label="Button text">
+            <input className="input" maxLength={40} placeholder="Read more" value={slide.linkLabel ?? ''} onChange={(e) => set({ linkLabel: e.target.value })} />
+          </Field>
+        </div>
+      </div>
+      <div className="mt-4 space-y-4">
+        <Field label="Story" hint="A few lines. Keep it short, it's a front page.">
+          <textarea className="input min-h-24" maxLength={600} value={slide.body ?? ''} onChange={(e) => set({ body: e.target.value })} />
+        </Field>
+        <Field label="Artists in this story" hint="Shown as chips linking to their pages (up to 6).">
+          <div className="flex flex-wrap items-center gap-2">
+            {slide.artistIds.map((id) => (
+              <span key={id} className="chip !normal-case">
+                <RefLabel id={id} kind="artist" refs={refs} />
+                <button type="button" aria-label="Remove artist" onClick={() => set({ artistIds: slide.artistIds.filter((x) => x !== id) })}>
+                  <X size={12} />
+                </button>
+              </span>
+            ))}
+          </div>
+          {slide.artistIds.length < 6 && (
+            <div className="mt-2 max-w-sm">
+              <Picker
+                kind="artist"
+                placeholder="Tag an artist…"
+                onPick={(r) => {
+                  addRef(r);
+                  if (!slide.artistIds.includes(r.id)) set({ artistIds: [...slide.artistIds, r.id] });
+                }}
+              />
+            </div>
+          )}
+        </Field>
+      </div>
+    </>
+  );
+}
+
+function CoverSlideEditor({
+  slide,
+  index,
+  total,
+  refs,
+  addRef,
+  onChange,
+  onMove,
+  onRemove,
+}: {
+  slide: CoverSlide;
+  index: number;
+  total: number;
+  refs: Refs;
+  addRef: (r: SongRef | ArtistRef) => void;
+  onChange: (s: CoverSlide) => void;
+  onMove: (dir: -1 | 1) => void;
+  onRemove: () => void;
+}) {
+  // Switching type keeps the sticker and schedule.
+  const switchType = (type: CoverSlide['type']) => {
+    if (type === slide.type) return;
+    const keep = { kicker: slide.kicker, startsAt: slide.startsAt, endsAt: slide.endsAt };
+    onChange(type === 'news' ? { ...EMPTY_NEWS_SLIDE, ...keep } : { ...EMPTY_ARTIST_SLIDE, ...keep });
+  };
+
+  return (
+    <li className="border-2 border-ink bg-surface p-4">
+      <div className="mb-3 flex flex-wrap items-center gap-3">
+        <span className="mono">Slide {String(index + 1).padStart(2, '0')}</span>
+        <Segmented
+          value={slide.type}
+          onChange={switchType}
+          options={[
+            { value: 'artist', label: 'Artist feature' },
+            { value: 'news', label: 'News' },
+          ]}
+        />
+        <span className="flex-1" />
+        <IconBtn label="Move up" onClick={() => onMove(-1)} disabled={index === 0}>
+          <ArrowUp size={14} />
+        </IconBtn>
+        <IconBtn label="Move down" onClick={() => onMove(1)} disabled={index === total - 1}>
+          <ArrowDown size={14} />
+        </IconBtn>
+        <IconBtn label="Remove slide" onClick={onRemove}>
+          <Trash2 size={14} />
+        </IconBtn>
+      </div>
+      {slide.type === 'artist' ? (
+        <ArtistSlideFields slide={slide} refs={refs} addRef={addRef} onChange={onChange} />
+      ) : (
+        <NewsSlideFields slide={slide} refs={refs} addRef={addRef} onChange={onChange} />
+      )}
     </li>
   );
 }
@@ -422,13 +565,13 @@ function CoverStoryPanel({ initial, refs, addRef }: { initial: CoverStory; refs:
       title="Cover story"
       description="The carousel at the top of the front page."
       // Slides still waiting for an artist are dropped rather than failing the save.
-      onSave={() => save({ ...v, slides: v.slides.filter((s) => s.artistId) })}
+      onSave={() => save({ ...v, slides: v.slides.filter(isComplete) })}
       saving={saving}
       status={status}
     >
       <Segmented
         value={v.mode}
-        onChange={(mode) => setV({ ...v, mode, slides: mode === 'manual' && !v.slides.length ? [EMPTY_SLIDE] : v.slides })}
+        onChange={(mode) => setV({ ...v, mode, slides: mode === 'manual' && !v.slides.length ? [EMPTY_ARTIST_SLIDE] : v.slides })}
         options={[
           { value: 'auto', label: 'Automatic' },
           { value: 'manual', label: "Editor's picks" },
@@ -461,7 +604,7 @@ function CoverStoryPanel({ initial, refs, addRef }: { initial: CoverStory; refs:
             type="button"
             className="btn-ghost"
             disabled={v.slides.length >= MAX_SLIDES}
-            onClick={() => setV({ ...v, slides: [...v.slides, EMPTY_SLIDE] })}
+            onClick={() => setV({ ...v, slides: [...v.slides, EMPTY_ARTIST_SLIDE] })}
           >
             <Plus size={14} /> Add slide
           </button>
@@ -553,22 +696,52 @@ function AnnouncementPanel({ initial }: { initial: Announcement }) {
   );
 }
 
+/** Toggle chips for picking genres / cities by slug. */
+function SlugChips({ options, value, onChange }: { options: { slug: string; name: string }[]; value: string[]; onChange: (v: string[]) => void }) {
+  return (
+    <div className="flex max-h-40 flex-wrap gap-1.5 overflow-y-auto">
+      {options.map((o) => {
+        const on = value.includes(o.slug);
+        return (
+          <button
+            key={o.slug}
+            type="button"
+            aria-pressed={on}
+            className={`chip ${on ? 'chip-active' : ''}`}
+            onClick={() => onChange(on ? value.filter((s) => s !== o.slug) : [...value, o.slug])}
+          >
+            {o.name}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function TickerPanel({ initial, refs, addRef }: { initial: Ticker; refs: Refs; addRef: (r: SongRef | ArtistRef) => void }) {
   const [v, setV] = useState(initial);
   const [text, setText] = useState({ text: '', linkUrl: '' });
   const { save, saving, status } = useSaveSetting<Ticker>('ticker');
+  const genres = useGenres();
+  const regions = useRegions();
+  const shows = useShows();
+  const showName = (id: string) => shows.data?.items.find((s) => s.id === id)?.name ?? 'Unknown show';
 
   const setItems = (items: TickerItem[]) => setV({ ...v, items });
+  const setAuto = (patch: Partial<Ticker['auto']>) => setV({ ...v, auto: { ...v.auto, ...patch } });
+  const addItem = (item: TickerItem, same: (i: TickerItem) => boolean) => {
+    if (!v.items.some(same)) setItems([...v.items, item]);
+  };
 
   return (
-    <Panel title="Ticker" description="The scrolling strip under the header." onSave={() => save(v)} saving={saving} status={status}>
+    <Panel title="Ticker (New drops)" description="The scrolling strip under the header." onSave={() => save(v)} saving={saving} status={status}>
       <div className="flex flex-wrap items-end gap-4">
         <Segmented
           value={v.mode}
           onChange={(mode) => setV({ ...v, mode })}
           options={[
-            { value: 'auto', label: 'Latest releases' },
-            { value: 'manual', label: 'Hand-picked' },
+            { value: 'auto', label: 'Picks + latest releases' },
+            { value: 'manual', label: 'Picks only' },
             { value: 'hidden', label: 'Hidden' },
           ]}
         />
@@ -576,48 +749,108 @@ function TickerPanel({ initial, refs, addRef }: { initial: Ticker; refs: Refs; a
           <input className="input !w-44" maxLength={24} value={v.label} onChange={(e) => setV({ ...v, label: e.target.value })} />
         </Field>
       </div>
-      {v.mode === 'manual' && (
-        <>
-          {v.items.length ? (
-            <ol className="border-2 border-ink">
-              {v.items.map((item, i) => (
-                <li key={i} className="flex items-center gap-2 border-b border-dashed border-ink/25 px-3 py-1.5 last:border-b-0">
-                  <span className="mono w-12 text-muted">{item.type}</span>
-                  <span className="min-w-0 flex-1 truncate text-sm">
-                    {item.type === 'song' ? (
-                      <RefLabel id={item.songId} kind="song" refs={refs} />
-                    ) : (
-                      <>
-                        <b>{item.text}</b> {item.linkUrl && <span className="text-muted">→ {item.linkUrl}</span>}
-                      </>
-                    )}
-                  </span>
-                  <IconBtn label="Move up" onClick={() => setItems(move(v.items, i, -1))} disabled={i === 0}>
-                    <ArrowUp size={14} />
-                  </IconBtn>
-                  <IconBtn label="Move down" onClick={() => setItems(move(v.items, i, 1))} disabled={i === v.items.length - 1}>
-                    <ArrowDown size={14} />
-                  </IconBtn>
-                  <IconBtn label="Remove" onClick={() => setItems(v.items.filter((_, j) => j !== i))}>
-                    <X size={14} />
-                  </IconBtn>
-                </li>
+
+      {v.mode !== 'hidden' && (
+        <div className="flex flex-wrap items-end gap-6">
+          <Field label="Colour">
+            <div className="flex gap-1.5">
+              {TONE_OPTIONS.map((t) => (
+                <button
+                  key={t.value}
+                  type="button"
+                  aria-pressed={v.tone === t.value}
+                  onClick={() => setV({ ...v, tone: t.value })}
+                  className={`mono border-2 px-2.5 py-1.5 ${t.cls} ${v.tone === t.value ? 'border-ink shadow-hard-sm' : 'border-transparent opacity-70'}`}
+                >
+                  {t.label}
+                </button>
               ))}
-            </ol>
-          ) : (
-            <p className="text-sm text-muted italic">No items yet. The ticker stays hidden until you add some.</p>
-          )}
+            </div>
+          </Field>
+          <Field label="Speed">
+            <Segmented
+              value={v.speed}
+              onChange={(speed) => setV({ ...v, speed })}
+              options={[
+                { value: 'slow', label: 'Slow' },
+                { value: 'normal', label: 'Normal' },
+                { value: 'fast', label: 'Fast' },
+              ]}
+            />
+          </Field>
+        </div>
+      )}
+
+      {v.mode !== 'hidden' && (
+        <>
+          <div>
+            <p className="label">Your picks {v.mode === 'auto' && <span className="normal-case">(shown first, before the latest releases)</span>}</p>
+            {v.items.length ? (
+              <ol className="border-2 border-ink">
+                {v.items.map((item, i) => (
+                  <li key={i} className="flex items-center gap-2 border-b border-dashed border-ink/25 px-3 py-1.5 last:border-b-0">
+                    <span className="mono w-14 text-muted">{item.type}</span>
+                    <span className="min-w-0 flex-1 truncate text-sm">
+                      {item.type === 'song' ? (
+                        <RefLabel id={item.songId} kind="song" refs={refs} />
+                      ) : item.type === 'artist' ? (
+                        <RefLabel id={item.artistId} kind="artist" refs={refs} />
+                      ) : item.type === 'show' ? (
+                        <b className="uppercase">{showName(item.showId)}</b>
+                      ) : (
+                        <>
+                          <b>{item.text}</b> {item.linkUrl && <span className="text-muted">→ {item.linkUrl}</span>}
+                        </>
+                      )}
+                    </span>
+                    <IconBtn label="Move up" onClick={() => setItems(move(v.items, i, -1))} disabled={i === 0}>
+                      <ArrowUp size={14} />
+                    </IconBtn>
+                    <IconBtn label="Move down" onClick={() => setItems(move(v.items, i, 1))} disabled={i === v.items.length - 1}>
+                      <ArrowDown size={14} />
+                    </IconBtn>
+                    <IconBtn label="Remove" onClick={() => setItems(v.items.filter((_, j) => j !== i))}>
+                      <X size={14} />
+                    </IconBtn>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p className="text-sm text-muted italic">
+                {v.mode === 'manual' ? 'No picks yet. The ticker stays hidden until you add some.' : 'No picks. Only the latest releases scroll by.'}
+              </p>
+            )}
+          </div>
           <div className="grid gap-4 md:grid-cols-2">
             <Field label="Add a song">
-              <Picker
-                kind="song"
-                onPick={(r) => {
+              <Picker kind="song" onPick={(r) => {
                   addRef(r);
-                  if (!v.items.some((i) => i.type === 'song' && i.songId === r.id)) setItems([...v.items, { type: 'song', songId: r.id }]);
+                  addItem({ type: 'song', songId: r.id }, (i) => i.type === 'song' && i.songId === r.id);
                 }}
               />
             </Field>
-            <Field label="Add a text item">
+            <Field label="Add an artist">
+              <Picker kind="artist" onPick={(r) => {
+                  addRef(r);
+                  addItem({ type: 'artist', artistId: r.id }, (i) => i.type === 'artist' && i.artistId === r.id);
+                }}
+              />
+            </Field>
+            <Field label="Add a show">
+              <select
+                className="input"
+                value=""
+                onChange={(e) => e.target.value && addItem({ type: 'show', showId: e.target.value }, (i) => i.type === 'show' && i.showId === e.target.value)}
+              >
+                <option value="">Pick a show…</option>
+                {shows.data?.items.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Add a text item" hint="Link to a page here (/shows/legacy) or any https:// URL">
               <div className="flex gap-2">
                 <input className="input" placeholder="Text" maxLength={120} value={text.text} onChange={(e) => setText({ ...text, text: e.target.value })} />
                 <input className="input" placeholder="Link (optional)" value={text.linkUrl} onChange={(e) => setText({ ...text, linkUrl: e.target.value })} />
@@ -637,6 +870,41 @@ function TickerPanel({ initial, refs, addRef }: { initial: Ticker; refs: Refs; a
             </Field>
           </div>
         </>
+      )}
+
+      {v.mode === 'auto' && (
+        <div className="space-y-4 border-t-2 border-dashed border-ink/30 pt-5">
+          <p className="label">Latest releases</p>
+          <div className="flex flex-wrap gap-4">
+            <Field label="How many">
+              <input
+                type="number"
+                className="input !w-28"
+                min={3}
+                max={30}
+                value={v.auto.count}
+                onChange={(e) => setAuto({ count: Math.min(30, Math.max(3, Number(e.target.value) || 12)) })}
+              />
+            </Field>
+            <Field label="Released in the last" hint="Days. Empty = any time">
+              <input
+                type="number"
+                className="input !w-36"
+                min={1}
+                placeholder="Any time"
+                value={v.auto.withinDays ?? ''}
+                onChange={(e) => setAuto({ withinDays: e.target.value ? Math.max(1, Number(e.target.value)) : null })}
+              />
+            </Field>
+          </div>
+          <Field label="Only these sounds" hint="None selected = every genre">
+            <SlugChips options={genres.data?.items ?? []} value={v.auto.genreSlugs} onChange={(genreSlugs) => setAuto({ genreSlugs })} />
+          </Field>
+          <Field label="Only these cities" hint="None selected = everywhere">
+            <SlugChips options={regions.data?.items ?? []} value={v.auto.regionSlugs} onChange={(regionSlugs) => setAuto({ regionSlugs })} />
+          </Field>
+          <p className="text-xs text-dim">If the filters match nothing, only your picks show (or the ticker hides when there are none).</p>
+        </div>
       )}
     </Panel>
   );

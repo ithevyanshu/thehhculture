@@ -308,7 +308,31 @@ async function buildCustom(
 const MIN_SLIDES = 3;
 const MAX_SLIDES = 8;
 
-type Hero = NonNullable<Awaited<ReturnType<typeof heroFor>>>;
+type ArtistHero = NonNullable<Awaited<ReturnType<typeof heroFor>>>;
+type NewsHero = NonNullable<Awaited<ReturnType<typeof newsHeroFor>>>;
+type Hero = ArtistHero | NewsHero;
+type Slide = SiteConfig['coverStory']['slides'][number];
+
+/** A news slide: headline + story, with the tagged artists (missing ones drop out). */
+async function newsHeroFor(slide: Extract<Slide, { type: 'news' }>) {
+  const rows = slide.artistIds.length
+    ? await prisma.artist.findMany({
+        where: { id: { in: slide.artistIds } },
+        select: { id: true, slug: true, name: true, handle: true, imageUrl: true },
+      })
+    : [];
+  return {
+    type: 'news' as const,
+    reason: 'editorial' as const,
+    kicker: slide.kicker,
+    headline: slide.headline,
+    body: slide.body,
+    imageUrl: slide.imageUrl,
+    linkUrl: slide.linkUrl,
+    linkLabel: slide.linkLabel,
+    artists: slide.artistIds.flatMap((id) => rows.filter((r) => r.id === id)),
+  };
+}
 
 /** Latest drops, one per artist, from followed artists (or featured ones). */
 async function autoHeroes(userId: string | undefined, followedIds: string[], count: number, skipArtistIds: Set<string>) {
@@ -329,7 +353,7 @@ async function autoHeroes(userId: string | undefined, followedIds: string[], cou
   const featured = await pick({ artist: { featured: true } }, 'featured', count - mine.length);
   // Not enough featured artists with songs: fall back to the newest drops overall.
   const fresh = await pick({}, 'featured', count - mine.length - featured.length);
-  return [...mine, ...featured, ...fresh].filter((h): h is Hero => !!h);
+  return [...mine, ...featured, ...fresh].filter((h): h is ArtistHero => !!h);
 }
 
 async function heroFor(
@@ -348,6 +372,7 @@ async function heroFor(
   if (!artist) return null;
   const [[flaggedArtist], flaggedSongs] = await Promise.all([withFollowFlags(userId, [artist]), withLikeFlags(userId, song ? [song] : [])]);
   return {
+    type: 'artist' as const,
     artist: flaggedArtist,
     song: flaggedSongs[0] ?? null,
     reason,
@@ -368,15 +393,16 @@ async function buildHeroes(config: SiteConfig['coverStory'], userId: string | un
     config.mode === 'manual'
       ? config.slides.filter((s) => (!s.startsAt || Date.parse(s.startsAt) <= now) && (!s.endsAt || Date.parse(s.endsAt) > now))
       : [];
-  // Missing artists (deleted since) drop out.
-  const editorial = (await Promise.all(live.map((s) => heroFor(s.artistId, s.songId, userId, 'editorial', s)))).filter(
-    (h): h is Hero => !!h,
-  );
+  // Slides whose artist was deleted since drop out.
+  const editorial = (
+    await Promise.all(live.map((s) => (s.type === 'news' ? newsHeroFor(s) : heroFor(s.artistId, s.songId, userId, 'editorial', s))))
+  ).filter((h): h is Hero => !!h);
 
   const followedIds = ctx?.followedIds ?? [];
   const wantAuto = config.mode === 'auto' || config.autoFill;
   const autoCount = wantAuto ? Math.max(0, MIN_SLIDES - editorial.length) : 0;
-  const auto = await autoHeroes(userId, followedIds, autoCount, new Set(editorial.map((h) => h.artist.id)));
+  const featuredArtistIds = editorial.flatMap((h) => (h.type === 'artist' ? [h.artist.id] : []));
+  const auto = await autoHeroes(userId, followedIds, autoCount, new Set(featuredArtistIds));
 
   const personalFirst = followedIds.length > 0 && !config.forceForEveryone;
   const ordered = personalFirst

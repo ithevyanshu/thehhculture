@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- DHH/CULTURE mark: "D/C" in heavy caps with the saffron slash, on paper -->
+  <rect x="2" y="2" width="60" height="60" fill="#f2ecdf" stroke="#16130f" stroke-width="4"/>
+  <g font-family="'Archivo Black','Arial Black','Helvetica Neue',Arial,sans-serif" font-weight="900" font-size="34" text-anchor="middle">
+    <text x="17" y="44" fill="#16130f">D</text>
+    <text x="47" y="44" fill="#16130f">C</text>
+  </g>
+  <path d="M36 12 L28 52" stroke="#f05a0a" stroke-width="6" stroke-linecap="square"/>
+</svg>

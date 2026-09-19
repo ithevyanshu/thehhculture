@@ -356,7 +356,7 @@ export function ShowsAdmin() {
                 <p className="display text-3xl">{s.name}</p>
                 <p className="mono mt-1">
                   {s._count.seasons} season{s._count.seasons === 1 ? '' : 's'}
-                  {s.latestSeason?.cast.length ? ` · latest winner: ${s.latestSeason.cast.map((c) => at(c.artist)).join(', ')}` : ''}
+                  {s.latestSeason?.cast.some((c) => c.role === 'WINNER') ? ` · latest winner: ${s.latestSeason.cast.filter((c) => c.role === 'WINNER').map((c) => at(c.artist)).join(', ')}` : ''}
                 </p>
               </button>
             </li>

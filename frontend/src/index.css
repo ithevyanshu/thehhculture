@@ -24,7 +24,7 @@
   --font-display: 'Anton', 'Impact', sans-serif;
   --font-sans: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'Space Mono', ui-monospace, monospace;
-  --font-marker: 'Permanent Marker', cursive;
+  --font-marker: 'Rock Salt', cursive;
   --font-logo: 'Archivo Black', 'Arial Black', sans-serif;
 
   --animate-ticker: ticker 40s linear infinite;
@@ -70,7 +70,7 @@
   @apply font-mono text-[11px] font-bold uppercase tracking-[0.12em];
 }
 @utility marker {
-  @apply font-marker normal-case;
+  @apply font-marker normal-case leading-snug;
 }
 
 /* Hard offset shadow, the zine's signature */

@@ -1,15 +1,16 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Pause, Play } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ExternalLink, Newspaper, Pause, Play } from 'lucide-react';
 import { issueNumber } from '../lib/format';
 import { Artwork } from './Artwork';
 import { FollowButton } from './Buttons';
 import { FitTitle } from './ui';
-import type { Hero } from '../lib/types';
+import { SmartLink } from './SmartLink';
+import type { ArtistHero, Hero, NewsHero } from '../lib/types';
 
 const HERO_STICKER = { following: 'New from your artists', featured: 'Cover story', editorial: "Editor's pick" } as const;
 
-function CoverSlide({ hero, tilt }: { hero: Hero; tilt: 'left' | 'right' }) {
+function CoverSlide({ hero, tilt }: { hero: ArtistHero; tilt: 'left' | 'right' }) {
   const { artist, song, reason } = hero;
   const blurb = hero.blurb ?? artist.bio;
   return (
@@ -43,6 +44,60 @@ function CoverSlide({ hero, tilt }: { hero: Hero; tilt: 'left' | 'right' }) {
   );
 }
 
+/** Short name for a slide: the artist, or the news headline. */
+const slideTitle = (hero: Hero) => (hero.type === 'news' ? hero.headline : hero.artist.name);
+
+function NewsSlide({ hero, tilt }: { hero: NewsHero; tilt: 'left' | 'right' }) {
+  return (
+    <div className={`grid items-center gap-10 ${hero.imageUrl ? 'md:grid-cols-[5fr_7fr]' : ''}`}>
+      {hero.imageUrl && (
+        <div className="relative mx-auto w-full max-w-sm md:max-w-none">
+          <div className={`tape relative border border-ink/10 bg-surface p-3 pb-10 shadow-hard ${tilt === 'left' ? '-rotate-2' : 'rotate-2'}`}>
+            <Artwork src={hero.imageUrl} name={hero.headline} live />
+          </div>
+          <span className="sticker absolute -top-3 -right-2 z-10 rotate-6 !bg-red !text-base !text-paper">{hero.kicker ?? 'News'}</span>
+        </div>
+      )}
+
+      <div className="min-w-0">
+        <p className="mono flex items-center gap-2 text-saffron-soft">
+          {!hero.imageUrl && <span className="sticker !bg-red !text-paper">{hero.kicker ?? 'News'}</span>}
+          <Newspaper size={14} /> The wire · Issue #{issueNumber()}
+        </p>
+        <h2 className="display mt-3 text-5xl break-words md:text-7xl">{hero.headline}</h2>
+        {hero.body && <p className="mt-5 line-clamp-6 max-w-2xl text-lg leading-relaxed whitespace-pre-line">{hero.body}</p>}
+        {hero.artists.length > 0 && (
+          <div className="mt-5 flex flex-wrap gap-2">
+            {hero.artists.map((a) => (
+              <Link
+                key={a.id}
+                to={`/artists/${a.slug}`}
+                className="flex items-center gap-2 border-2 border-ink bg-surface py-1 pr-3 pl-1 shadow-hard-sm transition hover:bg-neon"
+              >
+                <div className="size-7 border border-ink">
+                  <Artwork src={a.imageUrl} name={a.name} seed={a.slug} live />
+                </div>
+                <span className="text-sm font-bold uppercase">{a.name}</span>
+              </Link>
+            ))}
+          </div>
+        )}
+        {hero.linkUrl && (
+          <div className="mt-7">
+            <SmartLink href={hero.linkUrl} className="btn-primary">
+              {hero.linkLabel ?? 'Read more'} {hero.linkUrl.startsWith('/') ? <ArrowRight size={14} /> : <ExternalLink size={14} />}
+            </SmartLink>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Slide({ hero, tilt }: { hero: Hero; tilt: 'left' | 'right' }) {
+  return hero.type === 'news' ? <NewsSlide hero={hero} tilt={tilt} /> : <CoverSlide hero={hero} tilt={tilt} />;
+}
+
 const reducedMotion = () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /**
@@ -70,7 +125,7 @@ export function CoverCarousel({ heroes, interval = 7 }: { heroes: Hero[]; interv
   if (count === 1) {
     return (
       <section className="mb-16">
-        <CoverSlide hero={heroes[0]} tilt="left" />
+        <Slide hero={heroes[0]} tilt="left" />
       </section>
     );
   }
@@ -112,17 +167,17 @@ export function CoverCarousel({ heroes, interval = 7 }: { heroes: Hero[]; interv
           const offset = i === current ? 0 : i < current ? -1 : 1;
           return (
             <div
-              key={`${hero.artist.id}-${i}`}
+              key={i}
               role="group"
               aria-roledescription="slide"
-              aria-label={`${i + 1} of ${count}: ${hero.artist.name}`}
+              aria-label={`${i + 1} of ${count}: ${slideTitle(hero)}`}
               aria-hidden={i !== current}
               inert={i !== current}
               className={`[grid-area:1/1] transition duration-500 ease-out ${
                 offset === 0 ? 'opacity-100' : `pointer-events-none opacity-0 ${offset < 0 ? '-translate-x-10' : 'translate-x-10'}`
               }`}
             >
-              <CoverSlide hero={hero} tilt={i % 2 ? 'right' : 'left'} />
+              <Slide hero={hero} tilt={i % 2 ? 'right' : 'left'} />
             </div>
           );
         })}
@@ -136,17 +191,17 @@ export function CoverCarousel({ heroes, interval = 7 }: { heroes: Hero[]; interv
         <div className="flex min-w-0 flex-1 gap-2">
           {heroes.map((hero, i) => (
             <button
-              key={`${hero.artist.id}-${i}`}
+              key={i}
               type="button"
               onClick={() => go(i)}
-              aria-label={`Show cover story ${i + 1}: ${hero.artist.name}`}
+              aria-label={`Show cover story ${i + 1}: ${slideTitle(hero)}`}
               aria-current={i === current}
               className={`relative flex min-w-0 flex-1 items-center gap-2 overflow-hidden border-2 border-ink px-2 py-1.5 text-left transition ${
                 i === current ? 'bg-ink text-paper' : 'bg-surface hover:bg-neon'
               }`}
             >
               <span className="mono shrink-0">{String(i + 1).padStart(2, '0')}</span>
-              <span className="hidden truncate text-sm font-bold uppercase md:inline">{hero.artist.name}</span>
+              <span className="hidden truncate text-sm font-bold uppercase md:inline">{slideTitle(hero)}</span>
               {i === current && (
                 <span
                   key={current}

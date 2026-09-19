@@ -40,6 +40,8 @@ function Season({ season }: { season: ShowSeason }) {
   const podium = season.cast.filter((c) => PODIUM.includes(c.role));
   const panel = season.cast.filter((c) => PANEL.includes(c.role));
   const contestants = season.cast.filter((c) => c.role === 'CONTESTANT');
+  // Showcase formats (64 Bars): each featured artist with their track.
+  const featured = season.cast.filter((c) => c.role === 'FEATURED');
 
   return (
     <section className="mb-16" id={`season-${season.number}`}>
@@ -60,6 +62,17 @@ function Season({ season }: { season: ShowSeason }) {
                 {c.role === 'WINNER' && <Trophy size={12} />} {c.placement ?? SHOW_ROLE_LABEL[c.role]}
               </span>
               <ArtistTile artist={c.artist} />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {featured.length > 0 && (
+        <div className="mb-8 grid grid-cols-2 gap-x-5 gap-y-8 sm:grid-cols-3 md:grid-cols-5">
+          {featured.map((c) => (
+            <div key={c.artist.id + c.role}>
+              <ArtistTile artist={c.artist} />
+              {c.placement && <p className="marker mt-1 truncate text-sm text-saffron-soft" title={c.placement}>“{c.placement}”</p>}
             </div>
           ))}
         </div>

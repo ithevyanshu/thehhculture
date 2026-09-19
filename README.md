@@ -32,7 +32,7 @@ The two apps share no code. The backend is a plain JSON API that any client can 
   - Filled from Wikidata (official usernames only) with "Fetch Instagram" in Admin → Artists or `npm run socials:fetch`.
   - Artists missing from Wikidata can be added by hand; the field accepts `@handle` or a profile link.
 - **Rap shows (Hustle, Legacy…)**:
-  - Each show has seasons, and each season has a cast: winner, runner-up, finalists, contestants, judges, guest judges and hosts.
+  - Each show has seasons, and each season has a cast: winner, runner-up, finalists, contestants, featured artists (showcases like Red Bull 64 Bars, with their track), judges, guest judges and hosts.
   - Public Shows pages have podiums and panels, and a "Rap shows" block shows on the front page.
   - Artist pages get "As seen on" badges.
   - Admins manage it all in Admin → Shows. `npm run shows:seed` loads MTV Hustle S1–4 and Legacy S1.
@@ -43,10 +43,10 @@ The two apps share no code. The backend is a plain JSON API that any client can 
   - Producers get "Prod. @handle" credits and a "Produced" section on their page.
   - The artist form has "+ Add a new city" for places that aren't listed yet.
 - **Front page control (Admin → Front page)**: changes go live on save. You can set:
-  - the cover story carousel: editor-picked slides (each with a sticker, blurb and schedule), topped up to 3 with the latest drops, autoplaying (pauses on hover, off for reduced motion)
+  - the cover story carousel: artist features or news stories (headline, story, image link, "read more" link, tagged artists), each with a sticker and schedule, topped up to 3 with the latest drops, autoplaying (pauses on hover, off for reduced motion)
   - the section layout: reorder, hide, rename, and add curated song/artist sections
   - the chart: pinned and excluded songs
-  - the ticker: hand-picked songs or text
+  - the "New drops" ticker: your picks (songs, artists, shows, text with any link) followed by the latest releases (count, last N days, genre and city filters), plus speed and colour
   - a site-wide announcement banner
 
   Settings are validated JSON in the `SiteSetting` table, so new options don't need migrations.
@@ -122,6 +122,7 @@ The seed loads **15 artists / 10 albums / 31 songs** so the app isn't empty on d
 | `npm run socials:fetch` | Fill missing artist Instagram links from Wikidata (`-- --force` re-checks all) |
 | `npm run shows:seed` | Load/refresh MTV Hustle S1–4 and Legacy S1 (idempotent) |
 | `npm run shows:import` | Import full show casts from `prisma/data/show-contestants.json` (MTV Hustle S1–5, LEGACY S1). Add `-- --dry` to preview |
+| `npm run shows:import:64bars` | Import Red Bull 64 Bars S1–S4 + Booth 2025 from `prisma/data/red-bull-64-bars.json`, creating each track as a song with producer credits |
 | `npm run handles:backfill` | Give artists without a handle one (Instagram username, else stage_name) |
 
 ## Deploying

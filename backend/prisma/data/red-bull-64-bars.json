@@ -1,0 +1,84 @@
+{
+  "_source": "Red_Bull_64_Bars_India_All_Seasons.xlsx (sources: redbull.com/in-en, Spotify S2 album, musiculture.in S4 lineup). S3 rows for Ikka and Rahul Dit-O duplicated S1 and were dropped. YouTube cells were search links, so they are not stored. Cities are cleaned to city, state.",
+  "shows": [
+    {
+      "name": "Red Bull 64 Bars",
+      "network": "Red Bull",
+      "description": "One artist, one producer, 64 bars, no hook. Red Bull's showcase for the sharpest pens in Indian hip hop.",
+      "seasons": [
+        {
+          "number": 1, "year": 2022, "title": null, "judges": [], "hosts": [],
+          "contestants": [
+            { "name": "MC Altaf", "role": "FEATURED", "track": "AWW!", "producer": "Karan Kanchan", "city": "Mumbai", "about": "Mumbai rapper; early Gully Gang/Indian hip-hop voice.", "instagram": "@mcaltaf" },
+            { "name": "Hanumankind", "role": "FEATURED", "track": "Third Eye Freeverse", "producer": "Karan Kanchan", "city": "Bengaluru", "about": "Bengaluru-based rapper known for English-language hip-hop.", "instagram": "@hanumankind" },
+            { "name": "Sikander Kahlon", "role": "FEATURED", "track": "Liu Kang", "producer": "Karan Kanchan", "city": "Mohali, Punjab", "about": "Punjabi hip-hop veteran with a long-running independent catalogue.", "instagram": "@sikanderkahlon" },
+            { "name": "Shah Rule", "role": "FEATURED", "track": "Game Set Match", "producer": "Karan Kanchan", "city": "Mumbai", "about": "Mumbai rapper known for English/Hinglish rap.", "instagram": "" },
+            { "name": "RANJ", "role": "FEATURED", "track": "T.G.I.F.", "producer": "Karan Kanchan", "city": "Bengaluru", "about": "Bengaluru singer-rapper with introspective, socially conscious writing.", "instagram": "" },
+            { "name": "Rahul Dit-O", "role": "FEATURED", "track": "Top Dawg", "producer": "Karan Kanchan", "city": "Mumbai", "about": "Mumbai rapper and lyricist with a bar-heavy style.", "instagram": "" },
+            { "name": "Ikka", "role": "FEATURED", "track": "Nostradamus", "producer": "Karan Kanchan", "city": "Delhi", "about": "Delhi rapper and veteran Indian hip-hop artist.", "instagram": "@ikkamusic" },
+            { "name": "Agsy", "role": "FEATURED", "track": "Mother O.G.", "producer": "Karan Kanchan", "city": "Delhi", "about": "Delhi rapper known for bilingual writing and high-energy delivery.", "instagram": "@agsy" },
+            { "name": "Rawal", "role": "FEATURED", "track": "64 RAW", "producer": "Karan Kanchan", "city": "Delhi", "about": "Delhi MC known for dense writing and lyrical experimentation.", "instagram": "@rawal" },
+            { "name": "Tienas", "role": "FEATURED", "track": "Demigod", "producer": "Karan Kanchan", "city": "Mumbai", "about": "Mumbai rapper with an abstract, experimental approach.", "instagram": "@tienas" },
+            { "name": "Dee MC", "role": "FEATURED", "track": "National Treasure", "producer": "Karan Kanchan", "city": "Mumbai", "about": "Mumbai rapper and performer known for Hindi/English lyricism.", "instagram": "@deemc" },
+            { "name": "Trichia Grace-Ann", "role": "FEATURED", "track": "Duchess", "producer": "Karan Kanchan", "city": "Mumbai", "about": "Mumbai singer, rapper and pianist blending rap and R&B.", "instagram": "@trichia" },
+            { "name": "Tsumyoki", "role": "FEATURED", "track": "idk", "producer": "Karan Kanchan", "city": "Goa", "about": "Young Indian hip-hop artist associated with alternative and melodic rap.", "instagram": "@tsumyoki" },
+            { "name": "D'Evil", "role": "FEATURED", "track": "Rani", "producer": "Karan Kanchan", "city": "Mumbai", "about": "Mumbai rapper and songwriter known for Hindi-English bars.", "instagram": "@deviltheartist" }
+          ]
+        },
+        {
+          "number": 2, "year": 2024, "title": null, "judges": [], "hosts": [],
+          "contestants": [
+            { "name": "Paal Dabba", "role": "FEATURED", "track": "Torrie Wilson", "producer": "Sez On The Beat", "city": "Chennai", "about": "Tamil rapper known for fast, colloquial Tamil rap.", "instagram": "@paaldabba" },
+            { "name": "Fejo", "role": "FEATURED", "track": "Top Tier Talk", "producer": "Parimal Shais", "city": "Kerala", "about": "Malayalam rapper and prominent Kerala hip-hop voice.", "instagram": "@fejomusic" },
+            { "name": "Sambata", "role": "FEATURED", "track": "Vazan", "producer": "Karan Kanchan", "city": "", "about": "Marathi rapper known for high-energy regional rap.", "instagram": "@sambata__00" },
+            { "name": "Reble", "role": "FEATURED", "track": "Kill Switch", "producer": "Parimal Shais", "city": "Kerala", "about": "Rapper associated with Kerala's contemporary hip-hop scene.", "instagram": "" },
+            { "name": "Raga", "role": "FEATURED", "track": "Soot Samet", "producer": "Karan Kanchan", "city": "Delhi", "about": "Delhi rapper known for battle-style lyricism.", "instagram": "@ragaonthebeat" },
+            { "name": "MC Couper", "role": "FEATURED", "track": "Minnal Pinar", "producer": "Parimal Shais", "city": "Kerala", "about": "Malayalam rapper from Kerala's independent hip-hop circuit.", "instagram": "" },
+            { "name": "tricksingh", "role": "FEATURED", "track": "History Books", "producer": "Sez On The Beat", "city": "Chandigarh", "about": "Chandigarh rapper focused on personal storytelling and legacy.", "instagram": "@tricksingh" },
+            { "name": "MC Square", "role": "FEATURED", "track": "Kakori Kaand", "producer": "Sez On The Beat", "city": "Faridabad, Haryana", "about": "Haryanvi rapper bringing regional language and identity.", "instagram": "@mc_square" }
+          ]
+        },
+        {
+          "number": 3, "year": 2025, "title": null, "judges": [], "hosts": [],
+          "contestants": [
+            { "name": "Karma", "role": "FEATURED", "track": "Zi Freestyle", "producer": "Stunnah Beatz", "city": "Dehradun", "about": "Dehradun rapper known for technical Hindi/Hinglish writing.", "instagram": "@karmahiphop" },
+            { "name": "Vijay DK", "role": "FEATURED", "track": "43 Ki Hawa", "producer": "Karan Kanchan", "city": "Mumbai", "about": "Mumbai rapper whose track references his neighbourhood pincode.", "instagram": "@vijaydk" },
+            { "name": "Gabri", "role": "FEATURED", "track": "Aanavaal Mothiram", "producer": "Hrishi", "city": "Kerala", "about": "Malayalam rapper known for verbose writing and intensity.", "instagram": "@gabri" },
+            { "name": "IAMLITAF!", "role": "FEATURED", "track": "Age of Aquarius", "producer": "Hrishi", "city": "Shillong, Meghalaya", "about": "Shillong rapper representing Northeast/Khasi hip-hop.", "instagram": "@iamlitaf" },
+            { "name": "100RBH", "role": "FEATURED", "track": "Bol Bala", "producer": "Karan Kanchan", "city": "Mumbai", "about": "Marathi/Indian hip-hop artist known for wordplay and collaborations.", "instagram": "@100rbh" },
+            { "name": "AFKAP", "role": "FEATURED", "track": "Lagaav", "producer": "Karan Kanchan", "city": "Mumbai", "about": "Mumbai rapper associated with alternative Hindi hip-hop.", "instagram": "@afkap" },
+            { "name": "Farhan Khan", "role": "FEATURED", "track": "Tailor Made", "producer": "Karan Kanchan", "city": "Mumbai", "about": "Mumbai artist with contemporary Hindi rap and melodic influences.", "instagram": "" }
+          ]
+        },
+        {
+          "number": 4, "year": 2026, "title": null, "judges": [], "hosts": [],
+          "contestants": [
+            { "name": "Dhanji", "role": "FEATURED", "track": "FUNK YOU PAY ME", "producer": "Karan Kanchan", "city": "Ahmedabad, Gujarat", "about": "Ahmedabad rapper known for distinctive delivery and multilingual wordplay.", "instagram": "@dhanji" },
+            { "name": "Emiway Bantai", "role": "FEATURED", "track": "Safal", "producer": "Memax", "city": "Mumbai", "about": "Mumbai rapper and independent hip-hop artist.", "instagram": "@emiwaybantai" },
+            { "name": "Naam Sujal", "role": "FEATURED", "track": "Bajesh Vishay", "producer": "Hisab", "city": "Nagpur, Maharashtra", "about": "Nagpur/Vidarbha rapper foregrounding regional identity.", "instagram": "@naamsujal" },
+            { "name": "Vichaar", "role": "FEATURED", "track": "", "producer": "", "city": "", "about": "Story-driven rapper associated with Uttarakhand/Kashmiri-rooted storytelling.", "instagram": "@vichaar" },
+            { "name": "Shia OG", "role": "FEATURED", "track": "", "producer": "", "city": "", "about": "Mumbai rapper in the announced Season 4 lineup.", "instagram": "" },
+            { "name": "Yung Sammy", "role": "FEATURED", "track": "", "producer": "", "city": "", "about": "", "instagram": "" },
+            { "name": "MC Gawthi", "role": "FEATURED", "track": "", "producer": "", "city": "", "about": "", "instagram": "" },
+            { "name": "J Queen", "role": "FEATURED", "track": "", "producer": "", "city": "", "about": "", "instagram": "" },
+            { "name": "Kid Mange", "role": "FEATURED", "track": "", "producer": "", "city": "", "about": "", "instagram": "" }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Red Bull 64 Bars Booth",
+      "network": "Red Bull",
+      "description": "The open-call side of Red Bull 64 Bars: anyone can drop a verse, and the winners get their own 64 Bars moment.",
+      "seasons": [
+        {
+          "number": 1, "year": 2025, "title": "Booth 2025", "judges": [], "hosts": [],
+          "contestants": [
+            { "name": "Saniya MQ", "role": "WINNER", "track": "Ladki Jeet Gayi", "producer": "Zero Chill", "city": "Mumbai", "about": "", "instagram": "@saniya_mq" },
+            { "name": "IAMLITAF!", "role": "WINNER", "track": "", "producer": "", "city": "Shillong, Meghalaya", "about": "", "instagram": "@iamlitaf" }
+          ]
+        }
+      ]
+    }
+  ]
+}

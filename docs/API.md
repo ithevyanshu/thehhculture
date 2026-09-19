@@ -51,7 +51,10 @@ Refresh tokens rotate on every use. Re-using an old token (after a 30s grace win
   "onboarded": true,
   "greetingName": "Demo Listener",
   // Cover-story carousel, in order (max 8). "hero" = heroes[0], kept for older clients.
-  "heroes": [{ "artist": {…}, "song": {…}, "reason": "following" | "featured" | "editorial", "kicker": null, "blurb": null }],
+  "heroes": [
+    { "type": "artist", "artist": {…}, "song": {…}, "reason": "following" | "featured" | "editorial", "kicker": null, "blurb": null },
+    { "type": "news", "reason": "editorial", "kicker": "Breaking", "headline": "…", "body": "…", "imageUrl": null, "linkUrl": "/shows/…", "linkLabel": null, "artists": [ /* ArtistRef */ ] }
+  ],
   "heroInterval": 7,
   "hero": { … },
   "sections": [

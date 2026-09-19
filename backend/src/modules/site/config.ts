@@ -44,25 +44,55 @@ const optionalText = (max: number) =>
 
 // ---------- Schemas ----------
 
-/** One editor-picked carousel slide. */
-export const coverSlideSchema = z.object({
-  artistId: id,
-  /** Song to promote; defaults to the artist's latest release. */
-  songId: id.nullish().transform((v) => v || null),
-  /** Sticker text, e.g. "Album of the week". */
-  kicker: optionalText(40),
-  /** Replaces the artist bio on the cover. */
-  blurb: optionalText(500),
-  startsAt: isoDate,
-  endsAt: isoDate,
-});
+const imageUrl = z
+  .string()
+  .trim()
+  .max(1000)
+  .nullish()
+  .transform((v) => v || null)
+  .refine((v) => !v || /^https:\/\//i.test(v), 'Image must be an https:// link');
+
+/** Editor-picked carousel slide: an artist feature or a news story. */
+export const coverSlideSchema = z.preprocess(
+  // Slides saved before news existed have no type.
+  (raw) => (raw && typeof raw === 'object' && !('type' in raw) ? { ...raw, type: 'artist' } : raw),
+  z.discriminatedUnion('type', [
+    z.object({
+      type: z.literal('artist'),
+      artistId: id,
+      /** Song to promote; defaults to the artist's latest release. */
+      songId: id.nullish().transform((v) => v || null),
+      /** Sticker text, e.g. "Album of the week". */
+      kicker: optionalText(40),
+      /** Replaces the artist bio on the cover. */
+      blurb: optionalText(500),
+      startsAt: isoDate,
+      endsAt: isoDate,
+    }),
+    z.object({
+      type: z.literal('news'),
+      /** Sticker text, e.g. "Breaking". */
+      kicker: optionalText(40),
+      headline: z.string().trim().min(1, 'Add a headline').max(120),
+      body: optionalText(600),
+      imageUrl,
+      /** "Read more": a page on the site (/shows/legacy) or an outside article. */
+      linkUrl: link,
+      linkLabel: optionalText(40),
+      /** Artists in the story, shown as chips. */
+      artistIds: z.array(id).max(6).default([]),
+      startsAt: isoDate,
+      endsAt: isoDate,
+    }),
+  ]),
+);
 
 export const coverStorySchema = z.preprocess(
   // Older saves held a single pick at the top level; it becomes the first slide.
   (raw) => {
     if (!raw || typeof raw !== 'object' || 'slides' in raw) return raw;
     const { artistId, songId, kicker, blurb, startsAt, endsAt, ...rest } = raw as Record<string, unknown>;
-    return { ...rest, slides: artistId ? [{ artistId, songId, kicker, blurb, startsAt, endsAt }] : [] };
+    return { ...rest, slides: artistId ? [{ type: 'artist', artistId, songId, kicker, blurb, startsAt, endsAt }] : [] };
   },
   z
     .object({
@@ -90,16 +120,32 @@ export const announcementSchema = z
   })
   .refine((v) => !v.enabled || v.text.length > 0, { message: 'Add some text before enabling the banner', path: ['text'] });
 
+const slugList = z.array(z.string().trim().min(1).max(80)).max(20).default([]);
+
 export const tickerItemSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('song'), songId: id }),
+  z.object({ type: z.literal('artist'), artistId: id }),
+  z.object({ type: z.literal('show'), showId: id }),
   z.object({ type: z.literal('text'), text: z.string().trim().min(1).max(120), linkUrl: link }),
 ]);
 
 export const tickerSchema = z.object({
-  /** auto = latest releases; manual = the items below; hidden = no ticker */
+  /** auto = your items first, then the latest releases; manual = only your items; hidden = no ticker */
   mode: z.enum(['auto', 'manual', 'hidden']).default('auto'),
   label: z.string().trim().min(1).max(24).default('New drops'),
   items: z.array(tickerItemSchema).max(30).default([]),
+  /** Which latest releases fill the ticker in auto mode. */
+  auto: z
+    .object({
+      count: z.number().int().min(3).max(30).default(12),
+      /** Only songs released in the last N days (null = any time). */
+      withinDays: z.number().int().min(1).max(3650).nullish().transform((v) => v ?? null),
+      genreSlugs: slugList,
+      regionSlugs: slugList,
+    })
+    .default({}),
+  speed: z.enum(['slow', 'normal', 'fast']).default('normal'),
+  tone: z.enum(['ink', 'saffron', 'red', 'neon']).default('ink'),
 });
 
 /** Built-in front-page blocks, in their default order. */

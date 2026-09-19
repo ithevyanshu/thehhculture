@@ -8,7 +8,7 @@ import { AlbumTile, ArtistTile, SongRow, SongTile, TrackList } from '../componen
 import { FollowButton } from '../components/Buttons';
 import { MissingHere, useSuggest } from '../components/Suggest';
 import { InstagramLink } from '../components/Instagram';
-import { SHOW_ROLE_LABEL } from '../lib/types';
+import { SHOW_ROLE_LABEL, type ShowAppearance, type ShowRole } from '../lib/types';
 import { Empty, ErrorState, FitTitle, Pagination, SectionHeader, Shelf, Spinner } from '../components/ui';
 
 function Stat({ value, label }: { value: number; label: string }) {
@@ -65,6 +65,24 @@ function Catalog({ slug }: { slug: string }) {
   );
 }
 
+const ROLE_ORDER: ShowRole[] = ['WINNER', 'RUNNER_UP', 'FINALIST', 'FEATURED', 'CONTESTANT', 'JUDGE', 'GUEST_JUDGE', 'HOST'];
+
+/** One badge per show + role ("MTV Hustle S1 · S4 | Judge"), best result first. */
+function groupAppearances(appearances: ShowAppearance[]) {
+  const groups = new Map<string, { key: string; show: ShowAppearance['season']['show']; role: ShowRole; label: string; seasons: number[] }>();
+  for (const a of appearances) {
+    // Contestants keep their placement ("Top 10"); 64 Bars-style features are just "Featured".
+    const label = a.role === 'CONTESTANT' && a.placement ? a.placement : a.role === 'FEATURED' ? 'Featured' : SHOW_ROLE_LABEL[a.role];
+    const key = `${a.season.show.slug}|${a.role}|${label}`;
+    const g = groups.get(key) ?? { key, show: a.season.show, role: a.role, label, seasons: [] };
+    g.seasons.push(a.season.number);
+    groups.set(key, g);
+  }
+  return [...groups.values()]
+    .map((g) => ({ ...g, seasons: g.seasons.sort((x, y) => x - y) }))
+    .sort((x, y) => ROLE_ORDER.indexOf(x.role) - ROLE_ORDER.indexOf(y.role));
+}
+
 export function ArtistPage() {
   const openSuggest = useSuggest();
   const { slug = '' } = useParams();
@@ -114,16 +132,19 @@ export function ArtistPage() {
           {appearances.length > 0 && (
             <div className="mt-4 flex flex-wrap items-center gap-2">
               <span className="mono text-muted">As seen on</span>
-              {appearances.map((a) => (
+              {groupAppearances(appearances).map((g) => (
                 <Link
-                  key={`${a.season.show.slug}-${a.season.number}-${a.role}`}
-                  to={`/shows/${a.season.show.slug}#season-${a.season.number}`}
-                  className={`mono border-2 border-ink px-2 py-1 shadow-hard-sm transition hover:-translate-y-0.5 ${
-                    a.role === 'WINNER' ? 'bg-saffron' : a.role === 'RUNNER_UP' ? 'bg-neon' : 'bg-surface'
+                  key={g.key}
+                  to={`/shows/${g.show.slug}#season-${g.seasons[0]}`}
+                  className={`mono inline-flex items-center border-2 border-ink shadow-hard-sm transition hover:-translate-y-0.5 ${
+                    g.role === 'WINNER' ? 'bg-saffron' : g.role === 'RUNNER_UP' ? 'bg-neon' : 'bg-surface'
                   }`}
                 >
-                  {a.role === 'WINNER' && '🏆 '}
-                  {a.season.show.name} S{a.season.number} · {a.role === 'CONTESTANT' && a.placement ? a.placement : SHOW_ROLE_LABEL[a.role]}
+                  <span className="px-2 py-1">
+                    {g.role === 'WINNER' && '🏆 '}
+                    {g.show.name} <span className="opacity-60">{g.seasons.map((n) => `S${n}`).join(' · ')}</span>
+                  </span>
+                  <span className="border-l-2 border-ink bg-ink px-2 py-1 text-paper">{g.label}</span>
                 </Link>
               ))}
             </div>
@@ -153,9 +174,9 @@ export function ArtistPage() {
         <Stat value={artist.stats.likes} label="Likes" />
       </div>
 
-      <div className="grid gap-12 xl:grid-cols-[1fr_360px]">
+      <div className="mb-16 grid gap-12 xl:grid-cols-[1fr_360px]">
         <div className="min-w-0">
-          <section className="mb-16">
+          <section>
             <SectionHeader kicker="Most liked" title="The hits" />
             {topSongs.length ? (
               <TrackList>

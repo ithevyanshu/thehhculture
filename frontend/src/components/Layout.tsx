@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { LogOut, Search, Settings, Shield, User as UserIcon, X } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
@@ -7,6 +7,7 @@ import type { Tone } from '../lib/types';
 import { issueDate, issueNumber } from '../lib/format';
 import { Artwork } from './Artwork';
 import { Wordmark } from './Wordmark';
+import { SmartLink } from './SmartLink';
 import { FloatingSuggestButton, SuggestProvider, useSuggest } from './Suggest';
 
 const nav = [
@@ -125,19 +126,6 @@ function MenuLink({ to, icon, label }: { to: string; icon: React.ReactNode; labe
   );
 }
 
-/** Internal paths use the router; external URLs open in a new tab. */
-function SmartLink({ href, className, children, tabIndex }: { href: string; className?: string; children: ReactNode; tabIndex?: number }) {
-  return href.startsWith('/') ? (
-    <Link to={href} className={className} tabIndex={tabIndex}>
-      {children}
-    </Link>
-  ) : (
-    <a href={href} target="_blank" rel="noreferrer" className={className} tabIndex={tabIndex}>
-      {children}
-    </a>
-  );
-}
-
 const TONES: Record<Tone, string> = {
   saffron: 'bg-saffron text-ink',
   ink: 'bg-ink text-paper',
@@ -193,20 +181,34 @@ function Announcement() {
 }
 
 /** Scrolling strip under the masthead: latest drops, or the admin's hand-picked items. */
+/** Strip colour + label chip that contrasts with it. */
+const TICKER_TONES: Record<Tone, { strip: string; label: string; star: string }> = {
+  ink: { strip: 'bg-ink text-paper', label: 'bg-saffron text-ink', star: 'text-saffron' },
+  saffron: { strip: 'bg-saffron text-ink', label: 'bg-ink text-paper', star: 'text-ink' },
+  red: { strip: 'bg-red text-paper', label: 'bg-ink text-paper', star: 'text-neon' },
+  neon: { strip: 'bg-neon text-ink', label: 'bg-ink text-paper', star: 'text-saffron-soft' },
+};
+/** Seconds per item, so long and short tickers scroll at the same pace. */
+const TICKER_PACE = { slow: 6, normal: 4, fast: 2.5 } as const;
+
 function Ticker() {
   const { data } = useSite();
   const ticker = data?.ticker;
   if (data && !ticker) return null; // hidden by admin
   if (!ticker?.items.length) return <div className="h-9 border-b-[3px] border-ink bg-ink" />;
+  const tone = TICKER_TONES[ticker.tone] ?? TICKER_TONES.ink;
+  const duration = Math.max(20, ticker.items.length * TICKER_PACE[ticker.speed ?? 'normal']);
+
   const items = (copy: string) =>
     ticker.items.map((item, i) => {
       const key = `${copy}-${i}`;
       const tabIndex = copy === 'b' ? -1 : undefined;
-      const cls = 'mx-6 inline-flex items-center gap-2 whitespace-nowrap hover:text-saffron';
+      const cls = 'mx-6 inline-flex items-center gap-2 whitespace-nowrap hover:underline';
+      const star = <span className={tone.star}>✦</span>;
       if (item.type === 'text') {
         const body = (
           <>
-            <span className="text-saffron">✦</span>
+            {star}
             <span className="font-bold">{item.text}</span>
           </>
         );
@@ -220,9 +222,19 @@ function Ticker() {
           </span>
         );
       }
+      if (item.type === 'artist' || item.type === 'show') {
+        const target = item.type === 'artist' ? item.artist : item.show;
+        return (
+          <Link key={key} to={`/${item.type}s/${target.slug}`} tabIndex={tabIndex} className={cls}>
+            {star}
+            <span className="opacity-60">{item.type === 'artist' ? 'Artist' : 'Show'}</span>
+            <span className="font-bold">{target.name}</span>
+          </Link>
+        );
+      }
       return (
         <Link key={key} to={`/songs/${item.song.slug}`} tabIndex={tabIndex} className={cls}>
-          <span className="text-saffron">✦</span>
+          {star}
           <span className="font-bold">{item.song.artist.name}</span>
           <span className="opacity-60">/</span>
           <span>{item.song.title}</span>
@@ -230,11 +242,11 @@ function Ticker() {
       );
     });
   return (
-    <div className="mono flex h-9 items-center overflow-hidden border-b-[3px] border-ink bg-ink text-paper">
-      <span className="z-10 flex h-full shrink-0 items-center bg-saffron px-3 text-ink">{ticker.label}</span>
+    <div className={`mono flex h-9 items-center overflow-hidden border-b-[3px] border-ink ${tone.strip}`}>
+      <span className={`z-10 flex h-full shrink-0 items-center px-3 ${tone.label}`}>{ticker.label}</span>
       <div className="relative flex-1 overflow-hidden">
         {/* Two identical copies + translateX(-50%) = seamless loop */}
-        <div className="animate-ticker flex w-max hover:[animation-play-state:paused]">
+        <div className="animate-ticker flex w-max hover:[animation-play-state:paused]" style={{ animationDuration: `${duration}s` }}>
           {items('a')}
           <div aria-hidden className="flex">
             {items('b')}

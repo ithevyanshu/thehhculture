@@ -154,12 +154,29 @@ export interface HomeResponse {
   sections: HomeSection[];
 }
 
-export interface Hero {
+export type Hero = ArtistHero | NewsHero;
+
+export interface ArtistHero {
+  type: 'artist';
   artist: ArtistCard & { bio: string | null; bannerUrl: string | null };
   song: SongCard | null;
   reason: 'following' | 'featured' | 'editorial';
   kicker: string | null;
   blurb: string | null;
+}
+
+/** Editor-written news story on the cover. */
+export interface NewsHero {
+  type: 'news';
+  reason: 'editorial';
+  kicker: string | null;
+  headline: string;
+  body: string | null;
+  imageUrl: string | null;
+  /** Site path (/shows/legacy) or outside URL. */
+  linkUrl: string | null;
+  linkLabel: string | null;
+  artists: ArtistRef[];
 }
 
 export interface PageMeta {
@@ -182,8 +199,12 @@ export interface SiteInfo {
   announcement: { text: string; linkUrl: string | null; linkLabel: string | null; tone: Tone } | null;
   ticker: {
     label: string;
+    tone: Tone;
+    speed: 'slow' | 'normal' | 'fast';
     items: (
       | { type: 'song'; song: { id: string; slug: string; title: string; artist: { name: string; slug: string } } }
+      | { type: 'artist'; artist: { name: string; slug: string } }
+      | { type: 'show'; show: { name: string; slug: string } }
       | { type: 'text'; text: string; linkUrl: string | null }
     )[];
   } | null;
@@ -220,13 +241,14 @@ export const SUGGESTION_STATUS_LABEL: Record<SuggestionStatus, string> = {
 };
 // ---------- Rap shows ----------
 
-export type ShowRole = 'WINNER' | 'RUNNER_UP' | 'FINALIST' | 'CONTESTANT' | 'JUDGE' | 'GUEST_JUDGE' | 'HOST';
+export type ShowRole = 'WINNER' | 'RUNNER_UP' | 'FINALIST' | 'CONTESTANT' | 'FEATURED' | 'JUDGE' | 'GUEST_JUDGE' | 'HOST';
 
 export const SHOW_ROLE_LABEL: Record<ShowRole, string> = {
   WINNER: 'Winner',
   RUNNER_UP: 'Runner-up',
   FINALIST: 'Finalist',
   CONTESTANT: 'Contestant',
+  FEATURED: 'Featured artist',
   JUDGE: 'Judge',
   GUEST_JUDGE: 'Guest judge',
   HOST: 'Host',
@@ -240,7 +262,8 @@ export interface ShowCard {
   description: string | null;
   logoUrl: string | null;
   _count: { seasons: number };
-  latestSeason: { number: number; year: number | null; title: string | null; cast: { artist: ArtistRef }[] } | null;
+  /** Latest season with its winners (competitions) or featured artists (showcases like 64 Bars). */
+  latestSeason: { number: number; year: number | null; title: string | null; cast: { role: ShowRole; artist: ArtistRef }[] } | null;
 }
 
 export interface ShowSeason {

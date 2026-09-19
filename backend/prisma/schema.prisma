@@ -282,6 +282,7 @@ enum ShowRole {
   RUNNER_UP
   FINALIST
   CONTESTANT
+  FEATURED // one-off showcase slot, e.g. a Red Bull 64 Bars track
   JUDGE
   GUEST_JUDGE
   HOST

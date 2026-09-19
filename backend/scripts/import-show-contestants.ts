@@ -4,6 +4,7 @@
  *
  *   npx tsx scripts/import-show-contestants.ts --dry   # preview, no writes
  *   npx tsx scripts/import-show-contestants.ts         # apply
+ *   npx tsx scripts/import-show-contestants.ts --file red-bull-64-bars.json   # another data file
  *
  * Rules
  *  - Existing artists are matched by name / handle / slug (plus a few known aliases) and only
@@ -22,15 +23,23 @@ import { autoHandle, handleAfterInstagramChange, uniqueHandle } from '../src/lib
 import { instagramUrl } from '../src/modules/images/wikipedia';
 
 const DRY = process.argv.includes('--dry');
+const fileArg = process.argv.indexOf('--file');
+const FILE = fileArg > -1 ? process.argv[fileArg + 1] : 'show-contestants.json';
 
 interface Contestant {
   name: string;
-  realName: string;
+  realName?: string;
   city: string;
-  placement: string;
+  placement?: string;
   about: string;
   instagram: string;
-  youtube: string;
+  youtube?: string;
+  /** Explicit role (e.g. FEATURED for 64 Bars-style showcases); else derived from placement. */
+  role?: ShowRole;
+  /** Track made for the show; created as a song (with producer credits) if missing. */
+  track?: string;
+  /** Producer(s), "A / B" for several. */
+  producer?: string;
 }
 interface SeasonData {
   number: number;
@@ -41,7 +50,8 @@ interface SeasonData {
   contestants: Contestant[];
 }
 interface Data {
-  shows: { name: string; seasons: SeasonData[] }[];
+  // network / description only fill a show's empty fields.
+  shows: { name: string; network?: string; description?: string; seasons: SeasonData[] }[];
 }
 
 // Stage names in the sheets -> the name we store (and match on).
@@ -52,6 +62,7 @@ const ALIASES: Record<string, string> = {
   hussain: 'Husxain',
   'bawa pahadi / rap id': 'Bawa Pahadi',
   'rap id': 'Bawa Pahadi', // LEGACY sheet: "formerly known as Rap ID"
+  '100rbh': '100 RBH', // 64 Bars sheet; keep the existing profile name
 };
 // Existing DB profiles that are the same person under an older/shorter name.
 const EXISTING_ALIASES: Record<string, string> = { 'Akki On The Mic': 'akki', Husxain: 'hussain' };
@@ -194,6 +205,37 @@ async function ensureArtist(rawName: string, info: Partial<Contestant>, log: str
   return created.id;
 }
 
+const songStats = { created: 0, matched: 0 };
+
+/** The show track as a song by the artist, with producer credits (producers get the badge). */
+async function ensureTrack(artistId: string, artistName: string, title: string, producer: string | undefined, log: string[]) {
+  const producerNames = (producer ?? '').split('/').map((p) => p.trim()).filter(Boolean);
+  const producerIds: string[] = [];
+  for (const p of producerNames) producerIds.push(await ensureArtist(p, {}, log));
+
+  const existing = artistId.startsWith('dry-')
+    ? null
+    : await prisma.song.findFirst({ where: { artistId, title: { equals: title, mode: 'insensitive' } }, select: { id: true } });
+  if (existing) {
+    songStats.matched++;
+    if (!DRY && producerIds.length) {
+      await prisma.songProducer.createMany({ data: producerIds.map((id) => ({ songId: existing.id, artistId: id })), skipDuplicates: true });
+    }
+  } else {
+    songStats.created++;
+    log.push(`+ song "${title}" - ${artistName}${producerNames.length ? ` (prod. ${producerNames.join(', ')})` : ''}`);
+    if (!DRY) {
+      const slug = await uniqueSlug(slugify(`${artistName} ${title}`), async (s) => !!(await prisma.song.findUnique({ where: { slug: s } })));
+      await prisma.song.create({
+        data: { slug, title, artistId, producers: { create: producerIds.map((id) => ({ artistId: id })) } },
+      });
+    }
+  }
+  if (!DRY && producerIds.length) {
+    await prisma.artist.updateMany({ where: { id: { in: producerIds }, isProducer: false }, data: { isProducer: true } });
+  }
+}
+
 function roleFor(placement: string): { role: ShowRole; placement: string | null } {
   const p = placement.trim();
   if (/^winner$/i.test(p)) return { role: 'WINNER', placement: null };
@@ -206,15 +248,25 @@ function roleFor(placement: string): { role: ShowRole; placement: string | null 
 const LEGACY_ROLES: Record<string, ShowRole> = { Prathamesh: 'WINNER', 'Akki On The Mic': 'FINALIST', Husxain: 'FINALIST' };
 
 (async () => {
-  const data: Data = JSON.parse(fs.readFileSync(path.join(__dirname, '../prisma/data/show-contestants.json'), 'utf8'));
+  const data: Data = JSON.parse(fs.readFileSync(path.join(__dirname, '../prisma/data', FILE), 'utf8'));
   await loadArtists();
   console.log(DRY ? '*** DRY RUN - nothing is written ***\n' : '');
 
   for (const showData of data.shows) {
     const slug = slugify(showData.name);
-    const show = DRY
+    let show = DRY
       ? await prisma.show.findUnique({ where: { slug } })
-      : await prisma.show.upsert({ where: { slug }, create: { slug, name: showData.name }, update: {} });
+      : await prisma.show.upsert({
+          where: { slug },
+          create: { slug, name: showData.name, network: showData.network, description: showData.description },
+          update: {},
+        });
+    if (!DRY && show && ((!show.network && showData.network) || (!show.description && showData.description))) {
+      show = await prisma.show.update({
+        where: { id: show.id },
+        data: { network: show.network ?? showData.network, description: show.description ?? showData.description },
+      });
+    }
 
     for (const s of showData.seasons) {
       const log: string[] = [];
@@ -226,8 +278,15 @@ const LEGACY_ROLES: Record<string, ShowRole> = { Prathamesh: 'WINNER', 'Akki On 
         const shifted = !raw.placement && /^\d+(st|nd|rd|th)?(\s*-\s*\d+)?$/i.test(raw.city);
         const c = shifted ? { ...raw, placement: raw.city, city: '' } : raw;
         const id = await ensureArtist(c.name, c, log);
-        const r = showData.name === 'Legacy' ? { role: LEGACY_ROLES[canonical(c.name)] ?? 'CONTESTANT', placement: null } : roleFor(c.placement);
+        const track = clean(c.track);
+        const r = c.role
+          ? // Showcases list the track as the "placement" ("Featured · AWW!").
+            { role: c.role, placement: c.role === 'FEATURED' ? track : null }
+          : showData.name === 'Legacy'
+            ? { role: LEGACY_ROLES[canonical(c.name)] ?? 'CONTESTANT', placement: null }
+            : roleFor(c.placement ?? '');
         add(id, r.role, r.placement);
+        if (track) await ensureTrack(id, canonical(c.name), track, c.producer, log);
       }
       for (const j of s.judges) add(await ensureArtist(j, {}, log), 'JUDGE', null);
       for (const h of s.hosts) {
@@ -255,5 +314,6 @@ const LEGACY_ROLES: Record<string, ShowRole> = { Prathamesh: 'WINNER', 'Akki On 
     }
   }
   console.log(`\nArtists: ${stats.created} new, ${stats.updated} existing updated, ${stats.matched} existing unchanged.`);
+  if (songStats.created + songStats.matched) console.log(`Songs: ${songStats.created} new, ${songStats.matched} already there.`);
   await prisma.$disconnect();
 })();

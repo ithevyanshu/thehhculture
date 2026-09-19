@@ -10,18 +10,23 @@ export const siteAdminRouter = Router();
 
 /** Every song/artist id referenced by the config, so the UI can show names instead of ids. */
 function referencedIds(config: SiteConfig) {
+  const slides = config.coverStory.slides;
   const songIds = new Set<string>([
-    ...config.coverStory.slides.flatMap((s) => (s.songId ? [s.songId] : [])),
+    ...slides.flatMap((s) => (s.type === 'artist' && s.songId ? [s.songId] : [])),
     ...config.ticker.items.flatMap((i) => (i.type === 'song' ? [i.songId] : [])),
     ...config.chart.pinnedSongIds,
     ...config.chart.excludedSongIds,
   ]);
-  const artistIds = new Set<string>(config.coverStory.slides.map((s) => s.artistId));
+  const artistIds = new Set<string>([
+    ...slides.flatMap((s) => (s.type === 'artist' ? [s.artistId] : s.artistIds)),
+    ...config.ticker.items.flatMap((i) => (i.type === 'artist' ? [i.artistId] : [])),
+  ]);
+  const showIds = new Set<string>(config.ticker.items.flatMap((i) => (i.type === 'show' ? [i.showId] : [])));
   for (const item of config.sections.items) {
     if (item.custom?.kind === 'songs') item.custom.ids.forEach((id) => songIds.add(id));
     if (item.custom?.kind === 'artists') item.custom.ids.forEach((id) => artistIds.add(id));
   }
-  return { songIds: [...songIds], artistIds: [...artistIds] };
+  return { songIds: [...songIds], artistIds: [...artistIds], showIds: [...showIds] };
 }
 
 siteAdminRouter.get('/site-config', async (_req, res) => {
@@ -51,13 +56,14 @@ siteAdminRouter.put('/site-config/:key', async (req, res) => {
   let value = parse(SCHEMAS[k] as z.ZodTypeAny, req.body) as SiteConfig[typeof k];
 
   // Referenced records must exist.
-  const { songIds, artistIds } = referencedIds({ ...(await getSiteConfig()), [k]: value } as SiteConfig);
-  const [songCount, artistCount] = await Promise.all([
+  const { songIds, artistIds, showIds } = referencedIds({ ...(await getSiteConfig()), [k]: value } as SiteConfig);
+  const [songCount, artistCount, showCount] = await Promise.all([
     prisma.song.count({ where: { id: { in: songIds } } }),
     prisma.artist.count({ where: { id: { in: artistIds } } }),
+    prisma.show.count({ where: { id: { in: showIds } } }),
   ]);
-  if (songCount !== songIds.length || artistCount !== artistIds.length) {
-    throw badRequest('Some selected songs or artists no longer exist. Refresh and try again.');
+  if (songCount !== songIds.length || artistCount !== artistIds.length || showCount !== showIds.length) {
+    throw badRequest('Some selected songs, artists or shows no longer exist. Refresh and try again.');
   }
 
   if (k === 'sections') value = normalizeSections(value as SiteConfig['sections']) as SiteConfig[typeof k];

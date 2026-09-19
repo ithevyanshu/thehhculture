@@ -9,7 +9,7 @@ import { artistCardSelect, withFollowFlags } from '../catalog/selects';
 export const showsRouter = Router();
 
 /** Podium first, then panel, then everyone else. */
-export const ROLE_ORDER: ShowRole[] = ['WINNER', 'RUNNER_UP', 'FINALIST', 'JUDGE', 'GUEST_JUDGE', 'HOST', 'CONTESTANT'];
+export const ROLE_ORDER: ShowRole[] = ['WINNER', 'RUNNER_UP', 'FINALIST', 'FEATURED', 'JUDGE', 'GUEST_JUDGE', 'HOST', 'CONTESTANT'];
 
 export const showCardSelect = {
   id: true,
@@ -27,8 +27,8 @@ export const showCardSelect = {
       year: true,
       title: true,
       cast: {
-        where: { role: ShowRole.WINNER },
-        select: { artist: { select: { id: true, slug: true, name: true, handle: true, imageUrl: true } } },
+        where: { role: { in: [ShowRole.WINNER, ShowRole.FEATURED] } },
+        select: { role: true, artist: { select: { id: true, slug: true, name: true, handle: true, imageUrl: true } } },
       },
     },
   },
