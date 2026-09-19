@@ -6,6 +6,8 @@ declare global {
       user?: { id: string; role: Role };
       /** Set on /admin routes: the caller's current role and permissions, read fresh from the DB. */
       staff?: { role: Role; permissions: string[] };
+      /** Set on /studio routes: the artist profile this account manages. */
+      studioArtistId?: string;
     }
   }
 }

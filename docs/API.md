@@ -111,9 +111,27 @@ Admin: `GET/POST /admin/shows`, `GET/PATCH/DELETE /admin/shows/:id`, `POST /admi
 
 `GET /artists?sort=trending` ranks by de-duplicated profile clicks over the last 7 days (then all-time clicks, then followers); items include `views: { week, allTime }`.
 
+## Artist Studio (✔ account linked to an artist; everything is scoped to that artist)
+
+Writes return `{ status: "APPLIED" | "PENDING", change }`: live now, or queued for review depending on the admin's auto-publish settings (per kind: profile, releases, posts).
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/studio` | `{ artist, pending, autoPublish }` |
+| GET | `/studio/stats` | followers (total, last 7/30 days), profile views (week, all time, daily for 30 days), likes, per-song likes and playlist adds |
+| PATCH | `/studio/profile` | name, handle, realName, bio, imageUrl, imageCredit, bannerUrl, activeSince, regionSlug, genreSlugs, instagram/youtube/spotify URLs. Admin-only fields are ignored |
+| GET/POST | `/studio/albums` | own releases; POST body as the admin album form minus `artistId`/`slug` |
+| GET/PATCH/DELETE | `/studio/albums/:id` | own albums only (404 otherwise) |
+| GET/POST | `/studio/songs` | own songs; albums must be the artist's own, credited artists must exist |
+| GET/PATCH/DELETE | `/studio/songs/:id` | own songs only |
+| GET/POST | `/studio/posts` | `{ text ≤ 280, linkUrl? }` (site path or https) |
+| DELETE | `/studio/posts/:id` | immediate, no review |
+| GET | `/studio/changes` | activity log, `status?`, paginated |
+| DELETE | `/studio/changes/:id` | withdraw a pending change |
+
 ## Admin (✔ role `ADMIN`, or `SUB_ADMIN` for granted sections)
 
-Sub-admins pass only for routes their `permissions` open (`artists`, `albums`, `songs`, `taxonomy`, `shows`, `frontPage`, `suggestions`, `users`; see `backend/src/lib/permissions.ts`); anything else is 403. `/admin/stats` is open to all staff.
+Sub-admins pass only for routes their `permissions` open (`artists`, `albums`, `songs`, `taxonomy`, `shows`, `frontPage`, `suggestions`, `users`, `studio`; see `backend/src/lib/permissions.ts`); anything else is 403. `/admin/stats` is open to all staff.
 
 | Method | Path | Notes |
 |---|---|---|
@@ -123,6 +141,14 @@ Sub-admins pass only for routes their `permissions` open (`artists`, `albums`, `
 | GET | `/admin/users` | `q, role, status=active\|disabled, page, limit` |
 | PATCH | `/admin/users/:id` | `{ role?: USER\|SUB_ADMIN\|ADMIN, permissions?: string[], disabled? }`: role/disable sign the user out everywhere; can't target yourself or the last admin. Role and permissions are full-admin only; sub-admins may only act on regular users |
 | POST | `/admin/users/:id/reset-password` | → `{ temporaryPassword }` (shown once); signs the user out and sets `mustChangePassword`. Not for your own account |
+| GET/PUT | `/admin/studio/settings` | `{ autoPublish: { profile, releases, posts } }` |
+| GET | `/admin/studio/links` | artists with their linked account |
+| GET | `/admin/studio/users` | `q`: account search for linking |
+| PUT | `/admin/studio/links/:artistId` | `{ userId }`: one account per artist and one artist per account; regular users become `ARTIST` |
+| DELETE | `/admin/studio/links/:artistId` | unlink (`ARTIST` goes back to `USER`) |
+| GET | `/admin/studio/changes` | `status=PENDING\|APPLIED\|REJECTED`; pending items include `current` values for comparison, plus `names` for referenced ids |
+| POST | `/admin/studio/changes/:id/approve` | re-validates and publishes; 4xx if it no longer applies |
+| POST | `/admin/studio/changes/:id/reject` | `{ note? }` shown to the artist |
 | GET | `/admin/suggestions` | `status, type, q, page, limit` → items + `counts` per status |
 | PATCH / DELETE | `/admin/suggestions/:id` | `{ status?, adminNote? }` |
 | GET/POST/PATCH/DELETE | `/admin/artists[/:id]` | `{ name, slug?, realName?, bio?, imageUrl?, bannerUrl?, activeSince?, verified?, featured?, regionSlug?, genreSlugs?, instagramUrl?, youtubeUrl?, spotifyUrl?, spotifyId? }` |

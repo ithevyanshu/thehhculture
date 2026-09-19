@@ -10,6 +10,7 @@ export const PERMISSIONS = [
   { value: 'taxonomy', label: 'Genres & cities' },
   { value: 'suggestions', label: 'Suggestions' },
   { value: 'users', label: 'Users (regular users only)' },
+  { value: 'studio', label: 'Artist Studio (link accounts, review changes)' },
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number]['value'];
 

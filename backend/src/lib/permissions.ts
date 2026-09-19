@@ -2,7 +2,7 @@
  * Sub-admin permissions: one per admin section. Full admins have them all; sub-admins
  * have only what an admin granted (User.permissions).
  */
-export const PERMISSIONS = ['artists', 'albums', 'songs', 'taxonomy', 'shows', 'frontPage', 'suggestions', 'users'] as const;
+export const PERMISSIONS = ['artists', 'albums', 'songs', 'taxonomy', 'shows', 'frontPage', 'suggestions', 'users', 'studio'] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
 type Rule = { method?: string; path: RegExp; allow: Permission[] | 'staff' };
@@ -26,6 +26,7 @@ const RULES: Rule[] = [
   { path: /^\/site-config(\/|$)/, allow: ['frontPage'] },
   { path: /^\/suggestions(\/|$)/, allow: ['suggestions'] },
   { path: /^\/users(\/|$)/, allow: ['users'] },
+  { path: /^\/studio(\/|$)/, allow: ['studio'] },
 ];
 
 /** Can a sub-admin with these permissions call `method path` (path relative to /admin)? */

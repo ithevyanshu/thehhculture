@@ -7,6 +7,7 @@ import { issueDate } from '../lib/format';
 import { ArtistTile, PlaylistTile, SongRow, SongTile, TrackList } from '../components/Cards';
 import { ShowTile } from '../components/ShowTile';
 import { CoverCarousel } from '../components/CoverCarousel';
+import { PostCard } from '../components/PostCard';
 import { ErrorState, SPOT_COLORS, SectionHeader, SeeAll, Shelf, Spinner, spotText } from '../components/ui';
 import type { HomeSection } from '../lib/types';
 
@@ -130,6 +131,14 @@ function SectionView({ section, kicker }: { section: HomeSection; kicker: string
               <SongTile key={`s-${item.song.id}`} song={item.song} />
             ),
           )}
+        </Shelf>
+      );
+    case 'posts':
+      return (
+        <Shelf {...common} cols="grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+          {section.items.map((p) => (
+            <PostCard key={p.id} post={p} artist={p.artist} />
+          ))}
         </Shelf>
       );
     case 'genres':

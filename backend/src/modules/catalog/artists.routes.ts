@@ -85,7 +85,10 @@ artistsRouter.get('/:slug', optionalAuth, async (req, res) => {
       spotifyUrl: true,
       spotifyId: true,
       featured: true,
+      // Run by the artist (or their team) in the Studio.
+      managedById: true,
       albums: { select: albumCardSelect, orderBy: { releaseDate: 'desc' } },
+      posts: { orderBy: { createdAt: 'desc' }, take: 5, select: { id: true, text: true, linkUrl: true, createdAt: true } },
     },
   });
   if (!artist) throw notFound('Artist');
@@ -154,8 +157,10 @@ artistsRouter.get('/:slug', optionalAuth, async (req, res) => {
     withLikeFlags(userId, produced),
   ]);
 
+  const { managedById, posts, ...flaggedRest } = flagged;
   res.json({
-    artist: { ...flagged, stats: { followers: artist._count.followers, songs: artist._count.songs, likes: likeTotal } },
+    artist: { ...flaggedRest, managed: !!managedById, stats: { followers: artist._count.followers, songs: artist._count.songs, likes: likeTotal } },
+    posts,
     topSongs: top,
     latestSongs: latest,
     featuredOn: featured,

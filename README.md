@@ -63,7 +63,13 @@ The two apps share no code. The backend is a plain JSON API that any client can 
   - **Sub-admins** only get the admin sections an admin ticks for them (front page, artists, albums, songs, shows, genres & cities, suggestions, users). Access is checked on every request, so changes apply immediately.
   - A sub-admin with "users" access can only disable or reset regular users; admins and sub-admins are managed by full admins.
   - **Password reset** generates a temporary password (shown once) and signs the user out; they must choose a new one at their next sign-in. Everyone can change their password in Settings.
-- **Roles**: `USER`, `SUB_ADMIN`, `ADMIN` (`ARTIST` is reserved; see the roadmap).
+- **Artist Studio (`/studio`)**:
+  - An admin links one account to one artist profile (Admin → Studio). The account gets the `ARTIST` role and a Studio link.
+  - Artists edit their profile (bio, photo, links, city, genres, @handle), add, edit and remove their own songs and releases, and post short updates. Verified, featured, slugs and Spotify IDs stay admin-only.
+  - Stats: followers (7 and 30 days), profile views (30-day chart), likes and playlist adds per song.
+  - Admins choose per kind of change (profile, releases, posts) whether it goes live immediately or waits in the review queue, where they see current and proposed values and approve or reject with a note. Every change is logged either way.
+  - Posts show on the artist page ("Updates", with an "Official" tag on managed profiles) and in the "From the artists" home block.
+- **Roles**: `USER`, `ARTIST`, `SUB_ADMIN`, `ADMIN`.
 
 ## Getting started
 
@@ -144,4 +150,4 @@ Step-by-step guide for dhhculture.in (Vercel + Railway + GoDaddy DNS): **[docs/D
 
 1. **Spotify import**: fill catalogs automatically (the `spotifyId` columns already exist)
 2. **Google login**: `OAuthAccount` table and a nullable password are already in the schema
-3. **Artist accounts**: `ARTIST` role and `Artist.managedById` are already in the schema
+3. **Artist accounts**: shipped as the Artist Studio; next steps are a public "claim this profile" flow and image uploads

@@ -33,6 +33,8 @@ export interface User {
   permissions: string[];
   /** Set by an admin password reset: a new password is required before anything else. */
   mustChangePassword: boolean;
+  /** The artist profile this account runs in the Studio, if linked by an admin. */
+  managedArtist: { id: string; slug: string; name: string; imageUrl: string | null } | null;
   onboarded: boolean;
   createdAt: string;
   favoriteGenres: Taxon[];
@@ -106,6 +108,8 @@ export interface ArtistDetail extends ArtistCard {
   featured: boolean;
   albums: AlbumCard[];
   stats: { followers: number; songs: number; likes: number };
+  /** Run by the artist (or their team) in the Studio. */
+  managed: boolean;
 }
 
 export interface PlaylistCard {
@@ -138,7 +142,8 @@ export type HomeSection =
   | { id: string; kind: 'chart'; title: string; subtitle?: string; seeAll?: SeeAll; items: (SongCard & { pinned?: boolean })[] }
   | { id: string; kind: 'scenes'; title: string; subtitle?: string; seeAll?: SeeAll; items: Region[] }
   | { id: string; kind: 'artist-ranking'; title: string; subtitle?: string; seeAll?: SeeAll; items: ArtistCard[] }
-  | { id: string; kind: 'shows'; title: string; subtitle?: string; seeAll?: SeeAll; items: ShowCard[] };
+  | { id: string; kind: 'shows'; title: string; subtitle?: string; seeAll?: SeeAll; items: ShowCard[] }
+  | { id: string; kind: 'posts'; title: string; subtitle?: string; seeAll?: SeeAll; items: (ArtistPost & { artist: ArtistRef })[] };
 
 export interface SeeAll {
   type: 'artists' | 'songs';
@@ -289,3 +294,48 @@ export interface ShowAppearance {
   placement?: string | null;
   season: { number: number; year: number | null; title: string | null; show: { slug: string; name: string } };
 }
+// ---------- Artist Studio ----------
+
+/** A short update an artist posts from the Studio. */
+export interface ArtistPost {
+  id: string;
+  text: string;
+  linkUrl: string | null;
+  createdAt: string;
+}
+
+export type ArtistChangeAction =
+  | 'PROFILE_UPDATE'
+  | 'ALBUM_CREATE'
+  | 'ALBUM_UPDATE'
+  | 'ALBUM_DELETE'
+  | 'SONG_CREATE'
+  | 'SONG_UPDATE'
+  | 'SONG_DELETE'
+  | 'POST_CREATE';
+export type ArtistChangeStatus = 'PENDING' | 'APPLIED' | 'REJECTED';
+
+export interface ArtistChange {
+  id: string;
+  action: ArtistChangeAction;
+  targetId: string | null;
+  summary: string;
+  payload: Record<string, unknown>;
+  status: ArtistChangeStatus;
+  reviewNote: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+}
+
+export const CHANGE_ACTION_LABEL: Record<ArtistChangeAction, string> = {
+  PROFILE_UPDATE: 'Profile edit',
+  ALBUM_CREATE: 'New release',
+  ALBUM_UPDATE: 'Release edit',
+  ALBUM_DELETE: 'Release removed',
+  SONG_CREATE: 'New song',
+  SONG_UPDATE: 'Song edit',
+  SONG_DELETE: 'Song removed',
+  POST_CREATE: 'Post',
+};
+
+export const CHANGE_STATUS_LABEL: Record<ArtistChangeStatus, string> = { PENDING: 'In review', APPLIED: 'Live', REJECTED: 'Not approved' };

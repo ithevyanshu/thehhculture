@@ -16,6 +16,7 @@ import { showsRouter } from './modules/shows/shows.routes';
 import { homeRouter } from './modules/home/home.routes';
 import { siteRouter } from './modules/site/site.routes';
 import { adminRouter } from './modules/admin/admin.routes';
+import { studioRouter } from './modules/studio/studio.routes';
 
 export function createApp() {
   const app = express();
@@ -48,6 +49,7 @@ export function createApp() {
   api.use('/playlists', playlistsRouter);
   api.use('/suggestions', suggestionsRouter);
   api.use('/shows', showsRouter);
+  api.use('/studio', studioRouter);
   api.use('/admin', adminRouter);
   app.use('/api/v1', api);
 

@@ -154,6 +154,7 @@ export const BUILTIN_SECTIONS = [
   { key: 'scenes', label: 'Scenes (cities)', audience: 'everyone' },
   { key: 'trending-artists', label: 'Most viewed this week (artist ranking)', audience: 'everyone' },
   { key: 'shows', label: 'Rap shows (latest winners)', audience: 'everyone' },
+  { key: 'artist-posts', label: 'From the artists (Studio posts)', audience: 'everyone' },
   { key: 'recent', label: 'Jump back in (recently viewed)', audience: 'signed-in' },
   { key: 'following', label: 'New from artists you follow', audience: 'signed-in' },
   { key: 'made-for-you', label: 'Made for you', audience: 'signed-in' },
@@ -207,6 +208,20 @@ export const chartSchema = z.object({
   excludedSongIds: z.array(id).max(200).default([]),
 });
 
+/** Artist Studio: which kinds of artist changes go live without an admin approving them. */
+export const studioSchema = z.object({
+  autoPublish: z
+    .object({
+      /** Bio, photo, links, city, genres, handle. */
+      profile: z.boolean().default(false),
+      /** Songs and albums: add, edit, delete. */
+      releases: z.boolean().default(false),
+      /** Short updates on the artist page and in followers' feeds. */
+      posts: z.boolean().default(false),
+    })
+    .default({}),
+});
+
 export const issueSchema = z.object({
   /** auto = week of the year; manual = the number below */
   mode: z.enum(['auto', 'manual']).default('auto'),
@@ -237,6 +252,7 @@ export const SCHEMAS = {
   sections: sectionsSchema,
   chart: chartSchema,
   issue: issueSchema,
+  studio: studioSchema,
 } as const;
 
 export type SettingKey = keyof typeof SCHEMAS;
@@ -263,6 +279,7 @@ function defaults(): SiteConfig {
     sections: normalizeSections({ items: [] }),
     chart: chartSchema.parse({}),
     issue: issueSchema.parse({}),
+    studio: studioSchema.parse({}),
   };
 }
 

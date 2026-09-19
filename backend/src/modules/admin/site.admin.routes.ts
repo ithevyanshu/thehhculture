@@ -52,6 +52,7 @@ siteAdminRouter.get('/site-config', async (_req, res) => {
 siteAdminRouter.put('/site-config/:key', async (req, res) => {
   const key = param(req, 'key');
   if (!SETTING_KEYS.includes(key as SettingKey)) throw badRequest(`Unknown setting "${key}"`);
+  if (key === 'studio') throw badRequest('Studio settings are saved from Admin → Studio');
   const k = key as SettingKey;
   let value = parse(SCHEMAS[k] as z.ZodTypeAny, req.body) as SiteConfig[typeof k];
 

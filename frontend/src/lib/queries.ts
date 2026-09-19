@@ -15,6 +15,7 @@ import type {
   RecentItem,
   Region,
   ShowAppearance,
+  ArtistPost,
   ShowCard,
   ShowDetail,
   SiteInfo,
@@ -62,6 +63,8 @@ export const useArtist = (slug: string) =>
         related: ArtistCard[];
         produced: SongCard[];
         appearances: ShowAppearance[];
+        /** Latest Studio posts from the artist. */
+        posts: ArtistPost[];
       }>(
         `/artists/${slug}`,
       ),

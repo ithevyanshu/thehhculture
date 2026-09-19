@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, Navigate, NavLink, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { LogOut, Search, Settings, Shield, User as UserIcon, X } from 'lucide-react';
+import { LogOut, Mic, Search, Settings, Shield, User as UserIcon, X } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { useIssueNumber, useSite } from '../lib/queries';
 import type { Tone } from '../lib/types';
@@ -103,6 +103,7 @@ function UserMenu() {
           <p className="mono truncate px-3 py-2 text-muted">@{user.username}</p>
           <MenuLink to="/library" icon={<UserIcon size={16} />} label="Your library" />
           <MenuLink to="/settings" icon={<Settings size={16} />} label="Settings & taste" />
+          {user.managedArtist && <MenuLink to="/studio" icon={<Mic size={16} />} label="Artist Studio" />}
           {isStaff(user) && <MenuLink to="/admin" icon={<Shield size={16} />} label="Admin panel" />}
           <button
             onClick={async () => {
@@ -267,7 +268,11 @@ export function Layout() {
     window.scrollTo(0, 0);
   }, [location.pathname]);
 
-  const links = isStaff(user) ? [...nav, { to: '/admin', label: 'Admin', end: false }] : nav;
+  const links = [
+    ...nav,
+    ...(user?.managedArtist ? [{ to: '/studio', label: 'Studio', end: false }] : []),
+    ...(isStaff(user) ? [{ to: '/admin', label: 'Admin', end: false }] : []),
+  ];
 
   // After an admin password reset, nothing else opens until a new password is chosen.
   if (user?.mustChangePassword && location.pathname !== '/change-password') return <Navigate to="/change-password" replace />;

@@ -59,7 +59,9 @@ model User {
   recentViews     RecentView[]
   favoriteGenres  Genre[]        @relation("UserFavoriteGenres")
   favoriteRegions Region[]       @relation("UserFavoriteRegions")
-  managedArtists  Artist[]       @relation("ArtistManager")
+  managedArtist   Artist?        @relation("ArtistManager")
+  artistChanges   ArtistChange[] @relation("ChangeAuthor")
+  reviewedChanges ArtistChange[] @relation("ChangeReviewer")
   suggestions     Suggestion[]
 }
 
@@ -181,7 +183,8 @@ model Artist {
   youtubeUrl   String?
   spotifyUrl   String?
   spotifyId    String?  @unique
-  managedById  String?
+  /// The one account that runs this profile in the Studio (linked by an admin).
+  managedById  String?  @unique
   managedBy    User?    @relation("ArtistManager", fields: [managedById], references: [id], onDelete: SetNull)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -195,6 +198,8 @@ model Artist {
   dailyViews  ArtistDailyView[]
   produced    SongProducer[]
   showRoles   ShowAppearance[]
+  changes     ArtistChange[]
+  posts       ArtistPost[]
 
   @@index([regionId])
 }
@@ -396,4 +401,61 @@ model RecentView {
   @@unique([userId, artistId])
   @@unique([userId, songId])
   @@index([userId, viewedAt])
+}
+
+// ---------- Artist Studio ----------
+
+enum ArtistChangeAction {
+  PROFILE_UPDATE
+  ALBUM_CREATE
+  ALBUM_UPDATE
+  ALBUM_DELETE
+  SONG_CREATE
+  SONG_UPDATE
+  SONG_DELETE
+  POST_CREATE
+}
+
+enum ArtistChangeStatus {
+  PENDING // waiting for an admin
+  APPLIED // live (auto-published or approved)
+  REJECTED
+}
+
+/// Every change an artist makes in the Studio: the review queue and the audit log.
+/// `payload` is the validated input, re-validated and applied on approval.
+model ArtistChange {
+  id           String             @id @default(cuid())
+  artistId     String
+  artist       Artist             @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  authorId     String?
+  author       User?              @relation("ChangeAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  action       ArtistChangeAction
+  /// Song or album the change is about (null for profile / new items).
+  targetId     String?
+  /// Human-readable one-liner for lists, e.g. the song title.
+  summary      String
+  payload      Json
+  status       ArtistChangeStatus @default(PENDING)
+  reviewNote   String?
+  reviewedById String?
+  reviewedBy   User?              @relation("ChangeReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedAt   DateTime?
+  createdAt    DateTime           @default(now())
+
+  @@index([status, createdAt])
+  @@index([artistId, createdAt])
+}
+
+/// Short updates from an artist ("new drop Friday", "tour dates"), on their page and in followers' feeds.
+model ArtistPost {
+  id        String   @id @default(cuid())
+  artistId  String
+  artist    Artist   @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  text      String
+  linkUrl   String?
+  createdAt DateTime @default(now())
+
+  @@index([artistId, createdAt])
+  @@index([createdAt])
 }

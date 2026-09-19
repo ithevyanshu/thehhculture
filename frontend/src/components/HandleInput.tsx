@@ -26,6 +26,7 @@ export function HandleInput({
   onPick,
   single = false,
   createAsProducer = false,
+  allowCreate = true,
   excludeIds = [],
   placeholder = 'Type a name or @handle…',
 }: {
@@ -35,6 +36,8 @@ export function HandleInput({
   onPick?: (v: HandleRef) => void;
   single?: boolean;
   createAsProducer?: boolean;
+  /** Offer "Add new artist" for unknown handles (needs admin rights; off in the Artist Studio). */
+  allowCreate?: boolean;
   excludeIds?: string[];
   placeholder?: string;
 }) {
@@ -54,7 +57,7 @@ export function HandleInput({
   const unavailable = (data?.items ?? []).filter((a) => taken.has(a.id));
   const typedHandle = toHandle(text);
   const exact = (data?.items ?? []).some((a) => a.handle === typedHandle || a.name.toLowerCase() === q.toLowerCase());
-  const canCreate = !!typedHandle && HANDLE_RE.test(typedHandle) && !exact;
+  const canCreate = allowCreate && !!typedHandle && HANDLE_RE.test(typedHandle) && !exact;
   const options = results.length + (canCreate ? 1 : 0);
 
   // Typing "@some_handle" -> name suggestion "Some Handle"; typing a name keeps it as typed.

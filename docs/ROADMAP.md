@@ -31,16 +31,16 @@ The v1 schema already contains the hooks for these, so none of them require resh
 4. Reuse the same `sendSession()` flow, so cookie and token modes both keep working for web and mobile clients.
 5. Settings: "Connected accounts". Allow setting a password for OAuth-only users, and block unlinking the last sign-in method.
 
-## 3. Artist accounts (roles option 2)
+## 3. Artist accounts ✅ shipped as the Artist Studio
 
-**Already in place:** `Role.ARTIST` and `Artist.managedById → User` (the "ArtistManager" relation).
+**Done:** admin-linked accounts (one per artist, `Artist.managedById` is unique), `/studio` API and page (profile, songs/releases, posts, stats, activity), the `ArtistChange` review queue / audit log with per-kind auto-publish settings, and artist posts on artist pages and the home feed. Writes go through `modules/catalog/editor.ts`, shared with the admin panel.
 
-**Plan:**
-1. Claim flow: `POST /artists/:slug/claim` creates an `ArtistClaim` (new model: userId, artistId, proof links, status). Admins approve it in the panel, which sets `artist.managedById` and gives the user the `ARTIST` role.
-2. Middleware `requireArtistOwner(artistIdParam)` allows the request if the user is an admin **or** `artist.managedById === user.id`.
-3. `/studio` routes that reuse the admin forms, scoped to the artist's own profile, albums and songs. Hide `featured` / `verified` (admin-only).
-4. Artist dashboard: follower growth, likes per song, and playlist adds (add a daily snapshot table for trends).
-5. Optional: release announcements that go to followers' home feeds as a "New drop" section.
+**Next:**
+1. Public claim flow: `POST /artists/:slug/claim` creates an `ArtistClaim` (userId, artistId, proof links, status); approving it calls the existing link endpoint (`PUT /admin/studio/links/:artistId`).
+2. Several managers per artist (artist + manager + label): replace `managedById` with an `ArtistMember` join table with roles.
+3. Image uploads for artist photos and covers (currently pasted links).
+4. Per-artist auto-publish overrides ("trusted" artists), on top of the global settings.
+5. Follower-growth trends over longer periods (daily snapshot table).
 
 ## Other ideas
 

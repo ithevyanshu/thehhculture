@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { BadgeCheck, ExternalLink } from 'lucide-react';
+import { BadgeCheck, ExternalLink, Mic } from 'lucide-react';
 import { useArtist, useArtistSongs } from '../lib/queries';
 import { at, compact } from '../lib/format';
 import { Artwork } from '../components/Artwork';
@@ -8,6 +8,7 @@ import { AlbumTile, ArtistTile, SongRow, SongTile, TrackList } from '../componen
 import { FollowButton } from '../components/Buttons';
 import { MissingHere, useSuggest } from '../components/Suggest';
 import { InstagramLink } from '../components/Instagram';
+import { PostCard } from '../components/PostCard';
 import { SHOW_ROLE_LABEL, type ShowAppearance, type ShowRole } from '../lib/types';
 import { Empty, ErrorState, FitTitle, Pagination, SectionHeader, Shelf, Spinner } from '../components/ui';
 
@@ -91,7 +92,7 @@ export function ArtistPage() {
   if (isLoading) return <Spinner />;
   if (error || !data) return <ErrorState error={error} retry={refetch} />;
 
-  const { artist, topSongs, featuredOn, related, produced, appearances } = data;
+  const { artist, topSongs, featuredOn, related, produced, appearances, posts = [] } = data;
   const links = [
     { href: artist.spotifyUrl, label: 'Spotify' },
     { href: artist.youtubeUrl, label: 'YouTube' },
@@ -150,6 +151,11 @@ export function ArtistPage() {
             </div>
           )}
           <div className="mt-4 flex flex-wrap gap-2">
+            {artist.managed && (
+              <span className="mono inline-flex items-center gap-1 border-2 border-ink bg-saffron px-2.5 py-1" title="This profile is run by the artist or their team">
+                <Mic size={12} /> Official
+              </span>
+            )}
             {artist.genres.map((g) => (
               <Link key={g.slug} to={`/artists?genre=${g.slug}`} className="chip">
                 {g.name}
@@ -200,6 +206,17 @@ export function ArtistPage() {
           </aside>
         )}
       </div>
+
+      {posts.length > 0 && (
+        <section className="mb-16">
+          <SectionHeader kicker="Straight from the artist" title="Updates" />
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {posts.map((p) => (
+              <PostCard key={p.id} post={p} />
+            ))}
+          </div>
+        </section>
+      )}
 
       {artist.albums.length > 0 && (
         <Shelf kicker="Albums, EPs & mixtapes" title="Discography">

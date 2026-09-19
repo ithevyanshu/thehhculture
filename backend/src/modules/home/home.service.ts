@@ -11,7 +11,7 @@ import { listShows } from '../shows/shows.routes';
  * headings come from the admin-editable layout (SiteSetting "sections"); clients just
  * render each `kind`, so the layout can change without client releases.
  */
-export type SectionKind = 'songs' | 'artists' | 'recent' | 'playlists' | 'genres' | 'chart' | 'scenes' | 'artist-ranking' | 'shows';
+export type SectionKind = 'songs' | 'artists' | 'recent' | 'playlists' | 'genres' | 'chart' | 'scenes' | 'artist-ranking' | 'shows' | 'posts';
 
 export interface HomeSection {
   id: string;
@@ -138,6 +138,29 @@ const BUILDERS: Record<string, Builder> = {
       items: await listShows(),
     },
   ],
+
+  // Artists' own Studio posts: from the artists you follow, else the latest from everyone.
+  'artist-posts': async (ctx) => {
+    const since = new Date(Date.now() - 30 * 86_400_000);
+    const select = {
+      id: true,
+      text: true,
+      linkUrl: true,
+      createdAt: true,
+      artist: { select: { id: true, slug: true, name: true, handle: true, imageUrl: true } },
+    } as const;
+    const latest = (where: object) => prisma.artistPost.findMany({ where: { createdAt: { gte: since }, ...where }, orderBy: { createdAt: 'desc' }, take: 8, select });
+    const mine = ctx?.followedIds.length ? await latest({ artistId: { in: ctx.followedIds } }) : [];
+    return [
+      {
+        id: 'artist-posts',
+        kind: 'posts',
+        title: 'From the artists',
+        subtitle: mine.length ? 'Straight from the artists you follow' : 'Straight from their Studio',
+        items: mine.length ? mine : await latest({}),
+      },
+    ];
+  },
 
   recent: async (ctx) =>
     ctx ? [{ id: 'recent', kind: 'recent', title: 'Jump back in', items: await recentlyViewed(ctx.userId, SECTION_SIZE) }] : [],

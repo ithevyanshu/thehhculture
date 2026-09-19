@@ -18,6 +18,8 @@ export const publicUserSelect = {
   role: true,
   permissions: true,
   mustChangePassword: true,
+  /** The artist profile this account runs in the Studio, if any. */
+  managedArtist: { select: { id: true, slug: true, name: true, imageUrl: true } },
   onboarded: true,
   createdAt: true,
   favoriteGenres: { select: { id: true, slug: true, name: true } },

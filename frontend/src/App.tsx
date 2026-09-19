@@ -20,6 +20,7 @@ import { PlaylistPage } from './pages/PlaylistPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { AdminPage } from './pages/admin/AdminPage';
 import { ChangePasswordPage } from './pages/ChangePasswordPage';
+import { StudioPage } from './pages/StudioPage';
 import { isStaff } from './lib/permissions';
 
 function RequireAuth({ children, staff }: { children: ReactNode; staff?: boolean }) {
@@ -72,6 +73,7 @@ export default function App() {
         <Route path="settings" element={<RequireAuth><SettingsPage /></RequireAuth>} />
         <Route path="admin" element={<RequireAuth staff><AdminPage /></RequireAuth>} />
         <Route path="change-password" element={<RequireAuth><ChangePasswordPage /></RequireAuth>} />
+        <Route path="studio" element={<RequireAuth><StudioPage /></RequireAuth>} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>
