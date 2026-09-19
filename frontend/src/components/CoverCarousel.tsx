@@ -64,7 +64,7 @@ function NewsSlide({ hero, tilt }: { hero: NewsHero; tilt: 'left' | 'right' }) {
       <div className="min-w-0">
         <p className="mono flex items-center gap-2 text-saffron-soft">
           {!hero.imageUrl && <span className="sticker !bg-red !text-paper">{hero.kicker ?? 'News'}</span>}
-          <Newspaper size={14} /> The wire · Issue #{issue}
+          <Newspaper size={14} /> News · Issue #{issue}
         </p>
         <h2 className="display mt-3 text-5xl break-words md:text-7xl">{hero.headline}</h2>
         {hero.body && <p className="mt-5 line-clamp-6 max-w-2xl text-lg leading-relaxed whitespace-pre-line">{hero.body}</p>}
