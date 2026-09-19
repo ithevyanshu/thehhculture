@@ -1,0 +1,55 @@
+{
+  "name": "dhh-backend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "DHH (Desi Hip Hop) REST API - artists, songs, auth and personalization",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "start:prod": "prisma migrate deploy && node dist/index.js",
+    "postinstall": "prisma generate",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:seed": "prisma db seed",
+    "db:reset": "prisma migrate reset",
+    "db:studio": "prisma studio",
+    "images:fetch": "tsx scripts/fetch-artist-images.ts",
+    "socials:fetch": "tsx scripts/fetch-artist-socials.ts",
+    "shows:seed": "tsx scripts/seed-shows.ts",
+    "handles:backfill": "tsx scripts/backfill-handles.ts"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.19.3",
+    "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.1",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.7.0",
+    "helmet": "^8.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "morgan": "^1.12.1",
+    "prisma": "^6.19.3",
+    "tsx": "^4.23.13",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/cookie-parser": "^1.4.10",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/morgan": "^1.9.10",
+    "@types/node": "^26.6.2",
+    "typescript": "~5.9"
+  }
+}

@@ -1,0 +1,391 @@
+// DHH - Desi Hip Hop catalog schema
+// Expansion hooks (see docs/ROADMAP.md):
+//   - OAuthAccount + nullable User.passwordHash  -> Google / social login
+//   - Role.ARTIST + Artist.managedById            -> artists managing their own profile
+//   - spotifyId columns                            -> Spotify catalog import
+
+generator client {
+  provider = "prisma-client-js"
+  // Load relations with SQL joins (1 query per findMany instead of 1 per relation).
+  // Matters a lot when the DB is far away (e.g. Neon us-east from India).
+  previewFeatures = ["relationJoins"]
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+  ARTIST // reserved: artist-managed profiles (not yet exposed)
+}
+
+enum AlbumType {
+  ALBUM
+  EP
+  MIXTAPE
+  SINGLE
+}
+
+// ---------- Users & auth ----------
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  username     String   @unique
+  displayName  String
+  passwordHash String? // null for OAuth-only accounts
+  avatarUrl    String?
+  bio          String?
+  role         Role     @default(USER)
+  onboarded    Boolean  @default(false)
+  disabled     Boolean  @default(false) // blocked by an admin: cannot sign in or refresh
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  refreshTokens   RefreshToken[]
+  oauthAccounts   OAuthAccount[]
+  follows         Follow[]
+  likes           SongLike[]
+  playlists       Playlist[]
+  recentViews     RecentView[]
+  favoriteGenres  Genre[]        @relation("UserFavoriteGenres")
+  favoriteRegions Region[]       @relation("UserFavoriteRegions")
+  managedArtists  Artist[]       @relation("ArtistManager")
+  suggestions     Suggestion[]
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userAgent String?
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+// Linked social identities (e.g. provider = "google"). Unused until OAuth is enabled.
+model OAuthAccount {
+  id                String   @id @default(cuid())
+  provider          String
+  providerAccountId String
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt         DateTime @default(now())
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+// ---------- User suggestions ("something missing?") ----------
+
+enum SuggestionType {
+  MISSING_ARTIST
+  MISSING_SONG
+  CORRECTION
+  FEATURE
+  OTHER
+}
+
+enum SuggestionStatus {
+  NEW
+  PLANNED
+  DONE
+  DISMISSED
+}
+
+model Suggestion {
+  id         String           @id @default(cuid())
+  userId     String
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type       SuggestionType
+  message    String
+  contextUrl String? // page the suggestion was sent from, e.g. /artists/divine
+  status     SuggestionStatus @default(NEW)
+  adminNote  String? // visible to the user who sent it
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  @@index([status, createdAt])
+  @@index([userId])
+}
+
+// ---------- Site configuration (admin-editable front page) ----------
+
+// One row per settings group ("coverStory", "ticker", "sections", "announcement", "chart").
+// `value` is validated by zod schemas in src/modules/site/config.ts.
+model SiteSetting {
+  key         String   @id
+  value       Json
+  updatedById String?
+  updatedAt   DateTime @updatedAt
+}
+
+// ---------- Taxonomy ----------
+
+model Genre {
+  id          String  @id @default(cuid())
+  slug        String  @unique
+  name        String
+  description String?
+
+  artists Artist[]
+  songs   Song[]
+  fans    User[]   @relation("UserFavoriteGenres")
+}
+
+model Region {
+  id    String  @id @default(cuid())
+  slug  String  @unique
+  name  String
+  state String?
+
+  artists Artist[]
+  fans    User[]   @relation("UserFavoriteRegions")
+}
+
+// ---------- Catalog ----------
+
+model Artist {
+  id           String   @id @default(cuid())
+  slug         String   @unique
+  name         String
+  /** @handle used for credits/tags: Instagram username, else stage_name. Editable. */
+  handle       String?  @unique
+  realName     String?
+  bio          String?
+  imageUrl     String?
+  imageCredit    String? // attribution for licensed images, e.g. "Jane Doe / CC BY-SA 4.0"
+  imageSourceUrl String? // page the image came from (Wikimedia Commons file page)
+  bannerUrl    String?
+  activeSince  Int?
+  verified     Boolean  @default(false)
+  featured     Boolean  @default(false)
+  viewCount    Int      @default(0) // all-time de-duplicated profile opens
+  isProducer   Boolean  @default(false) // makes beats; shown with "Prod." credits
+  regionId     String?
+  region       Region?  @relation(fields: [regionId], references: [id], onDelete: SetNull)
+  instagramUrl String?
+  youtubeUrl   String?
+  spotifyUrl   String?
+  spotifyId    String?  @unique
+  managedById  String?
+  managedBy    User?    @relation("ArtistManager", fields: [managedById], references: [id], onDelete: SetNull)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  genres      Genre[]
+  albums      Album[]
+  songs       Song[]            @relation("PrimaryArtist")
+  features    SongFeature[]
+  followers   Follow[]
+  recentViews RecentView[]
+  dailyViews  ArtistDailyView[]
+  produced    SongProducer[]
+  showRoles   ShowAppearance[]
+
+  @@index([regionId])
+}
+
+// Per-day click counts, used for "trending" (views in the last 7 days).
+model ArtistDailyView {
+  artistId String
+  day      DateTime @db.Date
+  count    Int      @default(0)
+  artist   Artist   @relation(fields: [artistId], references: [id], onDelete: Cascade)
+
+  @@id([artistId, day])
+  @@index([day])
+}
+
+model Album {
+  id          String    @id @default(cuid())
+  slug        String    @unique
+  title       String
+  type        AlbumType @default(ALBUM)
+  releaseDate DateTime?
+  coverUrl    String?
+  artistId    String
+  artist      Artist    @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  spotifyId   String?   @unique
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  songs Song[]
+
+  @@index([artistId])
+}
+
+model Song {
+  id             String    @id @default(cuid())
+  slug           String    @unique
+  title          String
+  artistId       String
+  artist         Artist    @relation("PrimaryArtist", fields: [artistId], references: [id], onDelete: Cascade)
+  albumId        String?
+  album          Album?    @relation(fields: [albumId], references: [id], onDelete: SetNull)
+  trackNumber    Int?
+  releaseDate    DateTime?
+  durationSec    Int?
+  coverUrl       String?
+  explicit       Boolean   @default(false)
+  spotifyTrackId String?   @unique
+  youtubeVideoId String?
+  lyricsUrl      String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  genres          Genre[]
+  features        SongFeature[]
+  producers       SongProducer[]
+  likes           SongLike[]
+  playlistEntries PlaylistSong[]
+  recentViews     RecentView[]
+
+  @@index([artistId])
+  @@index([albumId])
+  @@index([releaseDate])
+}
+
+model SongFeature {
+  songId   String
+  artistId String
+  song     Song   @relation(fields: [songId], references: [id], onDelete: Cascade)
+  artist   Artist @relation(fields: [artistId], references: [id], onDelete: Cascade)
+
+  @@id([songId, artistId])
+  @@index([artistId])
+}
+
+// Beat / production credit ("Prod. @sez").
+model SongProducer {
+  songId   String
+  artistId String
+  song     Song   @relation(fields: [songId], references: [id], onDelete: Cascade)
+  artist   Artist @relation(fields: [artistId], references: [id], onDelete: Cascade)
+
+  @@id([songId, artistId])
+  @@index([artistId])
+}
+
+// ---------- Rap shows (Hustle, Legacy, ...) ----------
+
+enum ShowRole {
+  WINNER
+  RUNNER_UP
+  FINALIST
+  CONTESTANT
+  JUDGE
+  GUEST_JUDGE
+  HOST
+}
+
+model Show {
+  id          String       @id @default(cuid())
+  slug        String       @unique
+  name        String
+  network     String? // e.g. "MTV", "YouTube"
+  description String?
+  logoUrl     String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  seasons     ShowSeason[]
+}
+
+model ShowSeason {
+  id        String           @id @default(cuid())
+  showId    String
+  show      Show             @relation(fields: [showId], references: [id], onDelete: Cascade)
+  number    Int
+  year      Int?
+  title     String? // optional season subtitle, e.g. "Hustle 2.0"
+  createdAt DateTime         @default(now())
+  cast      ShowAppearance[]
+
+  @@unique([showId, number])
+}
+
+model ShowAppearance {
+  id       String     @id @default(cuid())
+  seasonId String
+  artistId String
+  role     ShowRole
+  season   ShowSeason @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  artist   Artist     @relation(fields: [artistId], references: [id], onDelete: Cascade)
+
+  @@unique([seasonId, artistId, role])
+  @@index([artistId])
+}
+
+// ---------- User activity ----------
+
+model Follow {
+  userId    String
+  artistId  String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  artist    Artist   @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([userId, artistId])
+  @@index([artistId])
+}
+
+model SongLike {
+  userId    String
+  songId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  song      Song     @relation(fields: [songId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([userId, songId])
+  @@index([songId])
+}
+
+model Playlist {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  isPublic    Boolean  @default(true)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  songs PlaylistSong[]
+
+  @@index([userId])
+}
+
+model PlaylistSong {
+  playlistId String
+  songId     String
+  position   Int
+  addedAt    DateTime @default(now())
+  playlist   Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  song       Song     @relation(fields: [songId], references: [id], onDelete: Cascade)
+
+  @@id([playlistId, songId])
+}
+
+// One row per (user, artist) or (user, song); viewedAt is bumped on each visit.
+model RecentView {
+  id       String   @id @default(cuid())
+  userId   String
+  artistId String?
+  songId   String?
+  viewedAt DateTime @default(now())
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  artist   Artist?  @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  song     Song?    @relation(fields: [songId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, artistId])
+  @@unique([userId, songId])
+  @@index([userId, viewedAt])
+}

@@ -1,0 +1,118 @@
+import bcrypt from 'bcryptjs';
+import { prisma } from '../../lib/prisma';
+import { conflict, forbidden, unauthorized } from '../../lib/http';
+import { env } from '../../config/env';
+import { generateRefreshToken, hashToken, signAccessToken } from './tokens';
+
+const DUMMY_HASH = bcrypt.hashSync('timing-equaliser', 12);
+const REUSE_GRACE_MS = 30_000;
+
+export const publicUserSelect = {
+  id: true,
+  email: true,
+  username: true,
+  displayName: true,
+  avatarUrl: true,
+  bio: true,
+  role: true,
+  onboarded: true,
+  createdAt: true,
+  favoriteGenres: { select: { id: true, slug: true, name: true } },
+  favoriteRegions: { select: { id: true, slug: true, name: true } },
+} as const;
+
+export async function getPublicUser(userId: string) {
+  return prisma.user.findUnique({ where: { id: userId }, select: publicUserSelect });
+}
+
+async function issueTokens(user: { id: string; role: import('@prisma/client').Role }, userAgent?: string) {
+  const accessToken = signAccessToken({ sub: user.id, role: user.role });
+  const { token: refreshToken, hash } = generateRefreshToken();
+  const expiresAt = new Date(Date.now() + env.REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000);
+  await prisma.refreshToken.create({
+    data: { tokenHash: hash, userId: user.id, expiresAt, userAgent: userAgent?.slice(0, 255) },
+  });
+  return { accessToken, refreshToken, refreshExpiresAt: expiresAt };
+}
+
+export async function register(
+  input: { email: string; username: string; password: string; displayName?: string },
+  userAgent?: string,
+) {
+  const email = input.email.toLowerCase();
+  const username = input.username.toLowerCase();
+
+  const existing = await prisma.user.findFirst({
+    where: { OR: [{ email }, { username }] },
+    select: { email: true },
+  });
+  if (existing) {
+    throw conflict(existing.email === email ? 'Email is already registered' : 'Username is taken');
+  }
+
+  const passwordHash = await bcrypt.hash(input.password, 12);
+  const user = await prisma.user.create({
+    data: { email, username, passwordHash, displayName: input.displayName?.trim() || input.username },
+    select: { id: true, role: true },
+  });
+
+  const tokens = await issueTokens(user, userAgent);
+  return { user: (await getPublicUser(user.id))!, ...tokens };
+}
+
+export async function login(input: { identifier: string; password: string }, userAgent?: string) {
+  const identifier = input.identifier.toLowerCase();
+  const user = await prisma.user.findFirst({
+    where: { OR: [{ email: identifier }, { username: identifier }] },
+    select: { id: true, role: true, passwordHash: true, disabled: true },
+  });
+
+  // Compare against a dummy hash when the user doesn't exist to keep timing uniform.
+  const ok = await bcrypt.compare(input.password, user?.passwordHash ?? DUMMY_HASH);
+  if (!user || !user.passwordHash || !ok) throw unauthorized('Invalid credentials');
+  if (user.disabled) throw forbidden('This account has been disabled');
+
+  const tokens = await issueTokens(user, userAgent);
+  return { user: (await getPublicUser(user.id))!, ...tokens };
+}
+
+/** Rotates a refresh token. Reuse of a revoked token revokes every session for that user. */
+export async function refresh(rawToken: string, userAgent?: string) {
+  const record = await prisma.refreshToken.findUnique({
+    where: { tokenHash: hashToken(rawToken) },
+    include: { user: { select: { id: true, role: true, disabled: true } } },
+  });
+  if (!record) throw unauthorized('Invalid refresh token');
+
+  if (record.revokedAt) {
+    // A just-rotated token is usually benign: two tabs refreshing at once, or a
+    // refresh response lost to a page reload/navigation before the browser stored the
+    // new cookie. Within the grace window, issue a fresh session instead of failing;
+    // older reuse is treated as theft and revokes every session.
+    if (Date.now() - record.revokedAt.getTime() < REUSE_GRACE_MS) {
+      if (record.user.disabled) throw forbidden('This account has been disabled');
+      if (record.expiresAt < new Date()) throw unauthorized('Refresh token expired');
+      const tokens = await issueTokens(record.user, userAgent);
+      return { user: (await getPublicUser(record.userId))!, ...tokens };
+    }
+    await prisma.refreshToken.updateMany({
+      where: { userId: record.userId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+    throw unauthorized('Refresh token reuse detected; please sign in again');
+  }
+  if (record.expiresAt < new Date()) throw unauthorized('Refresh token expired');
+  if (record.user.disabled) throw forbidden('This account has been disabled');
+
+  await prisma.refreshToken.update({ where: { id: record.id }, data: { revokedAt: new Date() } });
+  const tokens = await issueTokens(record.user, userAgent);
+  return { user: (await getPublicUser(record.userId))!, ...tokens };
+}
+
+export async function logout(rawToken: string | undefined) {
+  if (!rawToken) return;
+  await prisma.refreshToken.updateMany({
+    where: { tokenHash: hashToken(rawToken), revokedAt: null },
+    data: { revokedAt: new Date() },
+  });
+}

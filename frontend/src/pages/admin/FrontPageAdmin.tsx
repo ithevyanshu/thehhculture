@@ -1,0 +1,769 @@
+import { useEffect, useState, type ReactNode } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ArrowDown, ArrowUp, Eye, EyeOff, Plus, Trash2, X } from 'lucide-react';
+import { api, ApiError } from '../../lib/api';
+import { useArtists, useSongs } from '../../lib/queries';
+import { Artwork } from '../../components/Artwork';
+import { Spinner } from '../../components/ui';
+import { useDialog } from '../../components/Dialog';
+import type { Tone } from '../../lib/types';
+
+// ---------- Types mirroring backend/src/modules/site/config.ts ----------
+
+interface CoverStory {
+  mode: 'auto' | 'manual' | 'hidden';
+  artistId: string | null;
+  songId: string | null;
+  kicker: string | null;
+  blurb: string | null;
+  startsAt: string | null;
+  endsAt: string | null;
+  forceForEveryone: boolean;
+}
+interface Announcement {
+  enabled: boolean;
+  text: string;
+  linkUrl: string | null;
+  linkLabel: string | null;
+  tone: Tone;
+  expiresAt: string | null;
+}
+type TickerItem = { type: 'song'; songId: string } | { type: 'text'; text: string; linkUrl: string | null };
+interface Ticker {
+  mode: 'auto' | 'manual' | 'hidden';
+  label: string;
+  items: TickerItem[];
+}
+interface SectionItem {
+  key: string;
+  visible: boolean;
+  title: string | null;
+  subtitle: string | null;
+  custom?: { kind: 'songs' | 'artists'; ids: string[] };
+}
+interface Chart {
+  title: string | null;
+  size: number;
+  pinnedSongIds: string[];
+  excludedSongIds: string[];
+}
+interface SongRef {
+  id: string;
+  slug: string;
+  title: string;
+  coverUrl: string | null;
+  artistName: string;
+}
+interface ArtistRef {
+  id: string;
+  slug: string;
+  name: string;
+  imageUrl: string | null;
+}
+interface SiteConfigResponse {
+  config: { coverStory: CoverStory; announcement: Announcement; ticker: Ticker; sections: { items: SectionItem[] }; chart: Chart };
+  builtins: { key: string; label: string; audience: 'everyone' | 'signed-in' }[];
+  refs: { songs: Record<string, SongRef>; artists: Record<string, ArtistRef> };
+}
+
+type Refs = SiteConfigResponse['refs'];
+
+// ---------- helpers ----------
+
+const toLocalInput = (iso: string | null) => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+const fromLocalInput = (v: string) => (v ? new Date(v).toISOString() : null);
+
+function move<T>(list: T[], i: number, dir: -1 | 1) {
+  const j = i + dir;
+  if (j < 0 || j >= list.length) return list;
+  const next = [...list];
+  [next[i], next[j]] = [next[j], next[i]];
+  return next;
+}
+
+function useSaveSetting<T>(key: string) {
+  const qc = useQueryClient();
+  const [status, setStatus] = useState<{ ok: boolean; msg: string } | null>(null);
+  const mutation = useMutation({
+    mutationFn: (value: T) => api(`/admin/site-config/${key}`, { method: 'PUT', body: value }),
+    onSuccess: () => {
+      setStatus({ ok: true, msg: 'Saved. Live on the front page.' });
+      qc.invalidateQueries({ queryKey: ['home'] });
+      qc.invalidateQueries({ queryKey: ['site'] });
+      qc.invalidateQueries({ queryKey: ['admin', 'site-config'] });
+    },
+    onError: (err) => {
+      if (err instanceof ApiError && err.details) {
+        const details = Object.entries(err.details)
+          .map(([k, v]) => `${k}: ${(v as string[]).join(', ')}`)
+          .join(' · ');
+        setStatus({ ok: false, msg: `${err.message} - ${details}` });
+      } else setStatus({ ok: false, msg: err instanceof Error ? err.message : 'Save failed' });
+    },
+  });
+  return {
+    save: (v: T) => {
+      setStatus(null);
+      mutation.mutate(v);
+    },
+    saving: mutation.isPending,
+    status,
+  };
+}
+
+// ---------- building blocks ----------
+
+function Panel({
+  title,
+  description,
+  children,
+  onSave,
+  saving,
+  status,
+}: {
+  title: string;
+  description: string;
+  children: ReactNode;
+  onSave: () => void;
+  saving: boolean;
+  status: { ok: boolean; msg: string } | null;
+}) {
+  return (
+    <section className="mb-10 border-2 border-ink bg-surface shadow-hard">
+      <header className="border-b-2 border-ink bg-paper px-5 py-3">
+        <h2 className="display text-3xl">{title}</h2>
+        <p className="text-sm text-muted">{description}</p>
+      </header>
+      <div className="space-y-5 p-5">{children}</div>
+      <footer className="flex flex-wrap items-center gap-3 border-t-2 border-dashed border-ink/30 px-5 py-3">
+        <button onClick={onSave} disabled={saving} className="btn-primary">
+          {saving ? 'Saving…' : 'Save'}
+        </button>
+        {status && <p className={`text-sm ${status.ok ? 'text-saffron-soft' : 'text-red'}`}>{status.msg}</p>}
+      </footer>
+    </section>
+  );
+}
+
+function Segmented<T extends string>({ value, options, onChange }: { value: T; options: { value: T; label: string }[]; onChange: (v: T) => void }) {
+  return (
+    <div className="inline-flex flex-wrap border-2 border-ink">
+      {options.map((o) => (
+        <button
+          type="button"
+          key={o.value}
+          onClick={() => onChange(o.value)}
+          className={`mono px-3 py-1.5 ${value === o.value ? 'bg-ink text-paper' : 'bg-surface hover:bg-neon'}`}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
+  return (
+    <div role="group" aria-label={label}>
+      <span className="label">{label}</span>
+      {children}
+      {hint && <span className="mt-1 block text-xs text-dim">{hint}</span>}
+    </div>
+  );
+}
+
+/** Type-ahead search for a song or artist. */
+function Picker({
+  kind,
+  onPick,
+  placeholder,
+  artistSlug,
+}: {
+  kind: 'song' | 'artist';
+  onPick: (ref: SongRef | ArtistRef) => void;
+  placeholder?: string;
+  artistSlug?: string;
+}) {
+  const [q, setQ] = useState('');
+  const enabled = q.trim().length > 0 || !!artistSlug;
+  const songs = useSongs({ q, artist: artistSlug, limit: 8, sort: 'popular' }, kind === 'song' && enabled);
+  const artists = useArtists({ q, limit: 8 }, kind === 'artist' && enabled);
+  const [open, setOpen] = useState(false);
+
+  const results: (SongRef | ArtistRef)[] =
+    kind === 'song'
+      ? (songs.data?.items ?? []).map((s) => ({ id: s.id, slug: s.slug, title: s.title, coverUrl: s.coverUrl ?? s.album?.coverUrl ?? null, artistName: s.artist.name }))
+      : (artists.data?.items ?? []).map((a) => ({ id: a.id, slug: a.slug, name: a.name, imageUrl: a.imageUrl }));
+
+  return (
+    <div className="relative">
+      <input
+        className="input"
+        placeholder={placeholder ?? (kind === 'song' ? 'Search songs to add…' : 'Search artists…')}
+        value={q}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        onChange={(e) => {
+          setQ(e.target.value);
+          setOpen(true);
+        }}
+      />
+      {open && enabled && results.length > 0 && (
+        <ul className="absolute z-30 mt-1 max-h-72 w-full overflow-y-auto border-2 border-ink bg-surface shadow-hard">
+          {results.map((r) => (
+            <li key={r.id}>
+              <button
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => {
+                  onPick(r);
+                  setQ('');
+                  setOpen(false);
+                }}
+                className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-neon"
+              >
+                <div className="size-8 shrink-0 border border-ink">
+                  <Artwork src={'title' in r ? r.coverUrl : r.imageUrl} name={'title' in r ? r.title : r.name} seed={r.slug} live />
+                </div>
+                <span className="truncate text-sm font-semibold">{'title' in r ? r.title : r.name}</span>
+                {'artistName' in r && <span className="mono ml-auto shrink-0 text-muted">{r.artistName}</span>}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function RefLabel({ id, kind, refs }: { id: string; kind: 'song' | 'artist'; refs: Refs }) {
+  if (kind === 'song') {
+    const s = refs.songs[id];
+    return s ? (
+      <span className="truncate">
+        <b className="uppercase">{s.title}</b> <span className="text-muted">- {s.artistName}</span>
+      </span>
+    ) : (
+      <span className="text-red">Missing song</span>
+    );
+  }
+  const a = refs.artists[id];
+  return a ? <b className="truncate uppercase">{a.name}</b> : <span className="text-red">Missing artist</span>;
+}
+
+/** Ordered list of ids with move / remove controls. */
+function IdList({ ids, kind, refs, onChange, numbered }: { ids: string[]; kind: 'song' | 'artist'; refs: Refs; onChange: (ids: string[]) => void; numbered?: boolean }) {
+  if (!ids.length) return <p className="text-sm text-muted italic">Nothing added yet.</p>;
+  return (
+    <ol className="border-2 border-ink">
+      {ids.map((id, i) => (
+        <li key={id} className="flex items-center gap-2 border-b border-dashed border-ink/25 px-3 py-1.5 last:border-b-0">
+          {numbered && <span className="display w-7 text-xl">{String(i + 1).padStart(2, '0')}</span>}
+          <span className="min-w-0 flex-1 text-sm">
+            <RefLabel id={id} kind={kind} refs={refs} />
+          </span>
+          <IconBtn label="Move up" onClick={() => onChange(move(ids, i, -1))} disabled={i === 0}>
+            <ArrowUp size={14} />
+          </IconBtn>
+          <IconBtn label="Move down" onClick={() => onChange(move(ids, i, 1))} disabled={i === ids.length - 1}>
+            <ArrowDown size={14} />
+          </IconBtn>
+          <IconBtn label="Remove" onClick={() => onChange(ids.filter((x) => x !== id))}>
+            <X size={14} />
+          </IconBtn>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function IconBtn({ label, onClick, disabled, children }: { label: string; onClick: () => void; disabled?: boolean; children: ReactNode }) {
+  return (
+    <button type="button" aria-label={label} title={label} onClick={onClick} disabled={disabled} className="p-1.5 hover:bg-neon disabled:opacity-25">
+      {children}
+    </button>
+  );
+}
+
+// ---------- Panels ----------
+
+function CoverStoryPanel({ initial, refs, addRef }: { initial: CoverStory; refs: Refs; addRef: (r: SongRef | ArtistRef) => void }) {
+  const [v, setV] = useState(initial);
+  const { save, saving, status } = useSaveSetting<CoverStory>('coverStory');
+  const artist = v.artistId ? refs.artists[v.artistId] : null;
+
+  return (
+    <Panel
+      title="Cover story"
+      description="The big feature at the top of the front page."
+      onSave={() => save(v)}
+      saving={saving}
+      status={status}
+    >
+      <Segmented
+        value={v.mode}
+        onChange={(mode) => setV({ ...v, mode })}
+        options={[
+          { value: 'auto', label: 'Automatic' },
+          { value: 'manual', label: "Editor's pick" },
+          { value: 'hidden', label: 'Hidden' },
+        ]}
+      />
+      {v.mode === 'auto' && (
+        <p className="text-sm text-muted">Shows a featured artist's latest drop, or for signed-in users, the newest release from artists they follow.</p>
+      )}
+      {v.mode === 'manual' && (
+        <>
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field label="Artist *">
+              {artist ? (
+                <div className="flex items-center gap-3 border-2 border-ink bg-paper p-2">
+                  <div className="size-10 border border-ink">
+                    <Artwork src={artist.imageUrl} name={artist.name} seed={artist.slug} live />
+                  </div>
+                  <b className="flex-1 uppercase">{artist.name}</b>
+                  <IconBtn label="Change artist" onClick={() => setV({ ...v, artistId: null, songId: null })}>
+                    <X size={14} />
+                  </IconBtn>
+                </div>
+              ) : (
+                <Picker
+                  kind="artist"
+                  onPick={(r) => {
+                    addRef(r);
+                    setV({ ...v, artistId: r.id, songId: null });
+                  }}
+                />
+              )}
+            </Field>
+            <Field label="Song to promote" hint="Leave empty to use the artist's latest release">
+              {v.songId ? (
+                <div className="flex items-center gap-2 border-2 border-ink bg-paper px-3 py-2 text-sm">
+                  <span className="flex-1 truncate">
+                    <RefLabel id={v.songId} kind="song" refs={refs} />
+                  </span>
+                  <IconBtn label="Clear song" onClick={() => setV({ ...v, songId: null })}>
+                    <X size={14} />
+                  </IconBtn>
+                </div>
+              ) : (
+                <Picker
+                  kind="song"
+                  artistSlug={artist?.slug}
+                  placeholder={artist ? `Songs by ${artist.name}…` : 'Pick an artist first'}
+                  onPick={(r) => {
+                    addRef(r);
+                    setV({ ...v, songId: r.id });
+                  }}
+                />
+              )}
+            </Field>
+            <Field label="Sticker text" hint={'e.g. "Album of the week". Default: "Editor\'s pick"'}>
+              <input className="input" maxLength={40} value={v.kicker ?? ''} onChange={(e) => setV({ ...v, kicker: e.target.value })} />
+            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Starts">
+                <input
+                  type="datetime-local"
+                  className="input"
+                  value={toLocalInput(v.startsAt)}
+                  onChange={(e) => setV({ ...v, startsAt: fromLocalInput(e.target.value) })}
+                />
+              </Field>
+              <Field label="Ends">
+                <input
+                  type="datetime-local"
+                  className="input"
+                  value={toLocalInput(v.endsAt)}
+                  onChange={(e) => setV({ ...v, endsAt: fromLocalInput(e.target.value) })}
+                />
+              </Field>
+            </div>
+          </div>
+          <Field label="Blurb" hint="Replaces the artist bio on the cover. Leave empty to use the bio.">
+            <textarea className="input min-h-20" maxLength={500} value={v.blurb ?? ''} onChange={(e) => setV({ ...v, blurb: e.target.value })} />
+          </Field>
+          <label className="flex items-start gap-2 text-sm">
+            <input type="checkbox" className="mt-1" checked={v.forceForEveryone} onChange={(e) => setV({ ...v, forceForEveryone: e.target.checked })} />
+            <span>
+              <b>Show to everyone.</b> When off, signed-in users who follow artists keep their personal cover story, and everyone else sees this pick.
+            </span>
+          </label>
+          <p className="text-xs text-dim">Outside the start/end window the cover story falls back to automatic.</p>
+        </>
+      )}
+    </Panel>
+  );
+}
+
+const TONE_OPTIONS: { value: Tone; label: string; cls: string }[] = [
+  { value: 'saffron', label: 'Saffron', cls: 'bg-saffron text-ink' },
+  { value: 'ink', label: 'Ink', cls: 'bg-ink text-paper' },
+  { value: 'red', label: 'Red', cls: 'bg-red text-paper' },
+  { value: 'neon', label: 'Highlighter', cls: 'bg-neon text-ink' },
+];
+
+function AnnouncementPanel({ initial }: { initial: Announcement }) {
+  const [v, setV] = useState(initial);
+  const { save, saving, status } = useSaveSetting<Announcement>('announcement');
+  const tone = TONE_OPTIONS.find((t) => t.value === v.tone)!;
+
+  return (
+    <Panel title="Announcement banner" description="A strip above the header on every page, for tours, releases or notices." onSave={() => save(v)} saving={saving} status={status}>
+      <label className="flex items-center gap-2 font-semibold">
+        <input type="checkbox" checked={v.enabled} onChange={(e) => setV({ ...v, enabled: e.target.checked })} /> Banner is live
+      </label>
+      <div className="grid gap-4 md:grid-cols-2">
+        <Field label="Text">
+          <input className="input" maxLength={200} value={v.text} onChange={(e) => setV({ ...v, text: e.target.value })} />
+        </Field>
+        <Field label="Expires" hint="Optional. The banner hides itself after this time.">
+          <input type="datetime-local" className="input" value={toLocalInput(v.expiresAt)} onChange={(e) => setV({ ...v, expiresAt: fromLocalInput(e.target.value) })} />
+        </Field>
+        <Field label="Link" hint="/artists/seedhe-maut or https://…">
+          <input className="input" value={v.linkUrl ?? ''} onChange={(e) => setV({ ...v, linkUrl: e.target.value })} />
+        </Field>
+        <Field label="Link label" hint='Default: "Read more"'>
+          <input className="input" maxLength={40} value={v.linkLabel ?? ''} onChange={(e) => setV({ ...v, linkLabel: e.target.value })} />
+        </Field>
+      </div>
+      <Field label="Colour">
+        <div className="flex flex-wrap gap-2">
+          {TONE_OPTIONS.map((t) => (
+            <button
+              type="button"
+              key={t.value}
+              onClick={() => setV({ ...v, tone: t.value })}
+              className={`mono border-2 border-ink px-3 py-1.5 ${t.cls} ${v.tone === t.value ? 'shadow-hard-sm outline-2 outline-offset-2 outline-ink' : ''}`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </Field>
+      <div>
+        <span className="label">Preview</span>
+        <div className={`mono border-2 border-ink px-4 py-2 text-center ${tone.cls} ${v.enabled ? '' : 'opacity-50'}`}>
+          {v.text || 'Your announcement'} {v.linkUrl && <u>{v.linkLabel || 'Read more'} →</u>}
+        </div>
+      </div>
+    </Panel>
+  );
+}
+
+function TickerPanel({ initial, refs, addRef }: { initial: Ticker; refs: Refs; addRef: (r: SongRef | ArtistRef) => void }) {
+  const [v, setV] = useState(initial);
+  const [text, setText] = useState({ text: '', linkUrl: '' });
+  const { save, saving, status } = useSaveSetting<Ticker>('ticker');
+
+  const setItems = (items: TickerItem[]) => setV({ ...v, items });
+
+  return (
+    <Panel title="Ticker" description="The scrolling strip under the header." onSave={() => save(v)} saving={saving} status={status}>
+      <div className="flex flex-wrap items-end gap-4">
+        <Segmented
+          value={v.mode}
+          onChange={(mode) => setV({ ...v, mode })}
+          options={[
+            { value: 'auto', label: 'Latest releases' },
+            { value: 'manual', label: 'Hand-picked' },
+            { value: 'hidden', label: 'Hidden' },
+          ]}
+        />
+        <Field label="Label">
+          <input className="input !w-44" maxLength={24} value={v.label} onChange={(e) => setV({ ...v, label: e.target.value })} />
+        </Field>
+      </div>
+      {v.mode === 'manual' && (
+        <>
+          {v.items.length ? (
+            <ol className="border-2 border-ink">
+              {v.items.map((item, i) => (
+                <li key={i} className="flex items-center gap-2 border-b border-dashed border-ink/25 px-3 py-1.5 last:border-b-0">
+                  <span className="mono w-12 text-muted">{item.type}</span>
+                  <span className="min-w-0 flex-1 truncate text-sm">
+                    {item.type === 'song' ? (
+                      <RefLabel id={item.songId} kind="song" refs={refs} />
+                    ) : (
+                      <>
+                        <b>{item.text}</b> {item.linkUrl && <span className="text-muted">→ {item.linkUrl}</span>}
+                      </>
+                    )}
+                  </span>
+                  <IconBtn label="Move up" onClick={() => setItems(move(v.items, i, -1))} disabled={i === 0}>
+                    <ArrowUp size={14} />
+                  </IconBtn>
+                  <IconBtn label="Move down" onClick={() => setItems(move(v.items, i, 1))} disabled={i === v.items.length - 1}>
+                    <ArrowDown size={14} />
+                  </IconBtn>
+                  <IconBtn label="Remove" onClick={() => setItems(v.items.filter((_, j) => j !== i))}>
+                    <X size={14} />
+                  </IconBtn>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p className="text-sm text-muted italic">No items yet. The ticker stays hidden until you add some.</p>
+          )}
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field label="Add a song">
+              <Picker
+                kind="song"
+                onPick={(r) => {
+                  addRef(r);
+                  if (!v.items.some((i) => i.type === 'song' && i.songId === r.id)) setItems([...v.items, { type: 'song', songId: r.id }]);
+                }}
+              />
+            </Field>
+            <Field label="Add a text item">
+              <div className="flex gap-2">
+                <input className="input" placeholder="Text" maxLength={120} value={text.text} onChange={(e) => setText({ ...text, text: e.target.value })} />
+                <input className="input" placeholder="Link (optional)" value={text.linkUrl} onChange={(e) => setText({ ...text, linkUrl: e.target.value })} />
+                <button
+                  type="button"
+                  className="btn-ghost !px-3"
+                  disabled={!text.text.trim()}
+                  onClick={() => {
+                    setItems([...v.items, { type: 'text', text: text.text.trim(), linkUrl: text.linkUrl.trim() || null }]);
+                    setText({ text: '', linkUrl: '' });
+                  }}
+                  aria-label="Add text item"
+                >
+                  <Plus size={14} />
+                </button>
+              </div>
+            </Field>
+          </div>
+        </>
+      )}
+    </Panel>
+  );
+}
+
+function SectionsPanel({
+  initial,
+  builtins,
+  refs,
+  addRef,
+}: {
+  initial: SectionItem[];
+  builtins: SiteConfigResponse['builtins'];
+  refs: Refs;
+  addRef: (r: SongRef | ArtistRef) => void;
+}) {
+  const [items, setItems] = useState(initial);
+  const dialog = useDialog();
+  const [draft, setDraft] = useState<{ title: string; kind: 'songs' | 'artists' }>({ title: '', kind: 'songs' });
+  const { save, saving, status } = useSaveSetting<{ items: SectionItem[] }>('sections');
+  const meta = Object.fromEntries(builtins.map((b) => [b.key, b]));
+  const update = (i: number, patch: Partial<SectionItem>) => setItems(items.map((it, j) => (j === i ? { ...it, ...patch } : it)));
+
+  return (
+    <Panel
+      title="Front page layout"
+      description="Order, show/hide and rename blocks, or add your own curated ones. The cover story always comes first."
+      onSave={() => save({ items })}
+      saving={saving}
+      status={status}
+    >
+      <ol className="space-y-2">
+        {items.map((item, i) => {
+          const b = meta[item.key];
+          const custom = item.custom;
+          return (
+            <li key={item.key} className={`border-2 border-ink ${item.visible ? 'bg-surface' : 'bg-surface-2 opacity-70'}`}>
+              <div className="flex flex-wrap items-center gap-2 px-3 py-2">
+                <span className="display w-8 text-2xl">{String(i + 1).padStart(2, '0')}</span>
+                <div className="min-w-48 flex-1">
+                  <p className="mono text-muted">
+                    {custom ? `Curated ${custom.kind}` : b?.label ?? item.key}
+                    {b?.audience === 'signed-in' && <span className="ml-2 bg-neon px-1 text-ink">signed-in only</span>}
+                  </p>
+                  {item.key !== 'taste' && (
+                    <input
+                      className="input mt-1 !py-1.5"
+                      placeholder={custom ? 'Section title *' : 'Default title (type to override)'}
+                      value={item.title ?? ''}
+                      onChange={(e) => update(i, { title: e.target.value })}
+                    />
+                  )}
+                </div>
+                <IconBtn label={item.visible ? 'Hide' : 'Show'} onClick={() => update(i, { visible: !item.visible })}>
+                  {item.visible ? <Eye size={16} /> : <EyeOff size={16} />}
+                </IconBtn>
+                <IconBtn label="Move up" onClick={() => setItems(move(items, i, -1))} disabled={i === 0}>
+                  <ArrowUp size={16} />
+                </IconBtn>
+                <IconBtn label="Move down" onClick={() => setItems(move(items, i, 1))} disabled={i === items.length - 1}>
+                  <ArrowDown size={16} />
+                </IconBtn>
+                {custom && (
+                  <IconBtn
+                    label="Delete section"
+                    onClick={async () => {
+                      if (await dialog.confirm(`Remove the "${item.title}" section? It disappears from the front page when you save.`, { confirmLabel: 'Remove' }))
+                        setItems((cur) => cur.filter((x) => x.key !== item.key));
+                    }}
+                  >
+                    <Trash2 size={16} />
+                  </IconBtn>
+                )}
+              </div>
+              {custom && (
+                <div className="space-y-2 border-t-2 border-dashed border-ink/30 p-3">
+                  <input
+                    className="input !py-1.5"
+                    placeholder="Subtitle (optional)"
+                    value={item.subtitle ?? ''}
+                    onChange={(e) => update(i, { subtitle: e.target.value })}
+                  />
+                  <IdList
+                    ids={custom.ids}
+                    kind={custom.kind === 'songs' ? 'song' : 'artist'}
+                    refs={refs}
+                    onChange={(ids) => update(i, { custom: { ...custom, ids } })}
+                  />
+                  <Picker
+                    kind={custom.kind === 'songs' ? 'song' : 'artist'}
+                    onPick={(r) => {
+                      addRef(r);
+                      if (!custom.ids.includes(r.id)) update(i, { custom: { ...custom, ids: [...custom.ids, r.id] } });
+                    }}
+                  />
+                </div>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+
+      <div className="flex flex-wrap items-end gap-2 border-2 border-dashed border-ink p-3">
+        <Field label="New curated section">
+          <input className="input !w-64" placeholder='e.g. "Drill season"' value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} />
+        </Field>
+        <Segmented
+          value={draft.kind}
+          onChange={(kind) => setDraft({ ...draft, kind })}
+          options={[
+            { value: 'songs', label: 'Songs' },
+            { value: 'artists', label: 'Artists' },
+          ]}
+        />
+        <button
+          type="button"
+          className="btn-ghost"
+          disabled={!draft.title.trim()}
+          onClick={() => {
+            const key = `custom-${Date.now().toString(36)}`;
+            setItems([{ key, visible: true, title: draft.title.trim(), subtitle: null, custom: { kind: draft.kind, ids: [] } }, ...items]);
+            setDraft({ title: '', kind: draft.kind });
+          }}
+        >
+          <Plus size={14} /> Add to top
+        </button>
+      </div>
+    </Panel>
+  );
+}
+
+function ChartPanel({ initial, refs, addRef }: { initial: Chart; refs: Refs; addRef: (r: SongRef | ArtistRef) => void }) {
+  const [v, setV] = useState(initial);
+  const { save, saving, status } = useSaveSetting<Chart>('chart');
+
+  return (
+    <Panel
+      title="The Chart"
+      description="Ranked by likes. Pinned songs always sit at the top in your order; excluded songs never appear."
+      onSave={() => save(v)}
+      saving={saving}
+      status={status}
+    >
+      <div className="grid gap-4 md:grid-cols-2">
+        <Field label="Title" hint='Default: "The Chart"'>
+          <input className="input" maxLength={60} value={v.title ?? ''} onChange={(e) => setV({ ...v, title: e.target.value })} />
+        </Field>
+        <Field label="Number of songs">
+          <input
+            type="number"
+            min={5}
+            max={25}
+            className="input"
+            value={v.size}
+            onChange={(e) => setV({ ...v, size: Math.min(25, Math.max(5, Number(e.target.value) || 10)) })}
+          />
+        </Field>
+      </div>
+      <div className="grid gap-6 md:grid-cols-2">
+        <div className="space-y-2">
+          <span className="label">Pinned to the top (max 10)</span>
+          <IdList ids={v.pinnedSongIds} kind="song" refs={refs} numbered onChange={(pinnedSongIds) => setV({ ...v, pinnedSongIds })} />
+          {v.pinnedSongIds.length < 10 && (
+            <Picker
+              kind="song"
+              placeholder="Pin a song…"
+              onPick={(r) => {
+                addRef(r);
+                if (!v.pinnedSongIds.includes(r.id))
+                  setV({ ...v, pinnedSongIds: [...v.pinnedSongIds, r.id], excludedSongIds: v.excludedSongIds.filter((x) => x !== r.id) });
+              }}
+            />
+          )}
+        </div>
+        <div className="space-y-2">
+          <span className="label">Excluded</span>
+          <IdList ids={v.excludedSongIds} kind="song" refs={refs} onChange={(excludedSongIds) => setV({ ...v, excludedSongIds })} />
+          <Picker
+            kind="song"
+            placeholder="Exclude a song…"
+            onPick={(r) => {
+              addRef(r);
+              if (!v.excludedSongIds.includes(r.id))
+                setV({ ...v, excludedSongIds: [...v.excludedSongIds, r.id], pinnedSongIds: v.pinnedSongIds.filter((x) => x !== r.id) });
+            }}
+          />
+        </div>
+      </div>
+    </Panel>
+  );
+}
+
+// ---------- Page ----------
+
+export function FrontPageAdmin() {
+  const { data, isLoading } = useQuery({
+    queryKey: ['admin', 'site-config'],
+    queryFn: () => api<SiteConfigResponse>('/admin/site-config'),
+    refetchOnWindowFocus: false,
+  });
+  const [refs, setRefs] = useState<Refs>({ songs: {}, artists: {} });
+
+  useEffect(() => {
+    if (data) setRefs((r) => ({ songs: { ...r.songs, ...data.refs.songs }, artists: { ...r.artists, ...data.refs.artists } }));
+  }, [data]);
+
+  const addRef = (r: SongRef | ArtistRef) =>
+    setRefs((prev) =>
+      'title' in r ? { ...prev, songs: { ...prev.songs, [r.id]: r } } : { ...prev, artists: { ...prev.artists, [r.id]: r } },
+    );
+
+  if (isLoading || !data) return <Spinner />;
+  const { config } = data;
+
+  return (
+    <div>
+      <p className="mb-8 max-w-2xl text-muted">
+        Changes go live as soon as you save. Signed-in visitors see personal sections mixed into the layout below; anonymous visitors see only the "everyone" blocks.
+      </p>
+      <CoverStoryPanel initial={config.coverStory} refs={refs} addRef={addRef} />
+      <SectionsPanel initial={config.sections.items} builtins={data.builtins} refs={refs} addRef={addRef} />
+      <ChartPanel initial={config.chart} refs={refs} addRef={addRef} />
+      <TickerPanel initial={config.ticker} refs={refs} addRef={addRef} />
+      <AnnouncementPanel initial={config.announcement} />
+    </div>
+  );
+}

@@ -1,0 +1,211 @@
+/**
+ * Admin-editable site configuration (front page, ticker, banner, chart).
+ *
+ * Stored as validated JSON in SiteSetting rows, so adding a new knob never needs a
+ * migration. Reads are cached in-process and invalidated on write; the short TTL keeps
+ * multiple API instances roughly in sync.
+ */
+import { z } from 'zod';
+import { Prisma } from '@prisma/client';
+import { prisma } from '../../lib/prisma';
+
+const id = z.string().min(1).max(40);
+
+const isoDate = z
+  .string()
+  .trim()
+  .nullish()
+  .transform((v, ctx) => {
+    if (!v) return null;
+    const d = new Date(v);
+    if (Number.isNaN(d.getTime())) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Invalid date' });
+      return z.NEVER;
+    }
+    return d.toISOString();
+  });
+
+/** Internal path ("/artists/divine") or absolute http(s) URL. */
+const link = z
+  .string()
+  .trim()
+  .max(500)
+  .nullish()
+  .transform((v) => v || null)
+  .refine((v) => !v || v.startsWith('/') || /^https?:\/\//i.test(v), 'Use a path like /artists/divine or a full https:// URL');
+
+const optionalText = (max: number) =>
+  z
+    .string()
+    .trim()
+    .max(max)
+    .nullish()
+    .transform((v) => v || null);
+
+// ---------- Schemas ----------
+
+export const coverStorySchema = z
+  .object({
+    /** auto = spotlight picked by the algorithm; manual = editor's pick; hidden = no cover story */
+    mode: z.enum(['auto', 'manual', 'hidden']).default('auto'),
+    artistId: id.nullish().transform((v) => v || null),
+    /** Song to promote; defaults to the artist's latest release. */
+    songId: id.nullish().transform((v) => v || null),
+    /** Sticker text, e.g. "Album of the week". */
+    kicker: optionalText(40),
+    /** Replaces the artist bio on the cover. */
+    blurb: optionalText(500),
+    startsAt: isoDate,
+    endsAt: isoDate,
+    /** When false, signed-in users who follow artists still get their personal cover story. */
+    forceForEveryone: z.boolean().default(false),
+  })
+  .refine((v) => v.mode !== 'manual' || !!v.artistId, { message: 'Pick an artist for the cover story', path: ['artistId'] });
+
+export const announcementSchema = z
+  .object({
+    enabled: z.boolean().default(false),
+    text: z.string().trim().max(200).default(''),
+    linkUrl: link,
+    linkLabel: optionalText(40),
+    tone: z.enum(['saffron', 'ink', 'red', 'neon']).default('saffron'),
+    expiresAt: isoDate,
+  })
+  .refine((v) => !v.enabled || v.text.length > 0, { message: 'Add some text before enabling the banner', path: ['text'] });
+
+export const tickerItemSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('song'), songId: id }),
+  z.object({ type: z.literal('text'), text: z.string().trim().min(1).max(120), linkUrl: link }),
+]);
+
+export const tickerSchema = z.object({
+  /** auto = latest releases; manual = the items below; hidden = no ticker */
+  mode: z.enum(['auto', 'manual', 'hidden']).default('auto'),
+  label: z.string().trim().min(1).max(24).default('New drops'),
+  items: z.array(tickerItemSchema).max(30).default([]),
+});
+
+/** Built-in front-page blocks, in their default order. */
+export const BUILTIN_SECTIONS = [
+  { key: 'chart', label: 'The Chart', audience: 'everyone' },
+  { key: 'scenes', label: 'Scenes (cities)', audience: 'everyone' },
+  { key: 'trending-artists', label: 'Most viewed this week (artist ranking)', audience: 'everyone' },
+  { key: 'shows', label: 'Rap shows (latest winners)', audience: 'everyone' },
+  { key: 'recent', label: 'Jump back in (recently viewed)', audience: 'signed-in' },
+  { key: 'following', label: 'New from artists you follow', audience: 'signed-in' },
+  { key: 'made-for-you', label: 'Made for you', audience: 'signed-in' },
+  { key: 'taste', label: 'Because you like… / Straight outta…', audience: 'signed-in' },
+  { key: 'suggested-artists', label: 'Artists you might like', audience: 'signed-in' },
+  { key: 'featured-artists', label: 'Artists to know (featured artists)', audience: 'everyone' },
+  { key: 'playlists', label: 'Your playlists', audience: 'signed-in' },
+  { key: 'new-releases', label: 'Fresh drops (newest songs)', audience: 'everyone' },
+  { key: 'sounds', label: 'Sounds (genres)', audience: 'everyone' },
+] as const;
+
+export type BuiltinSectionKey = (typeof BUILTIN_SECTIONS)[number]['key'];
+const BUILTIN_KEYS = new Set<string>(BUILTIN_SECTIONS.map((s) => s.key));
+
+export const sectionItemSchema = z.object({
+  key: z.string().trim().min(1).max(60),
+  visible: z.boolean().default(true),
+  /** Overrides the default heading. */
+  title: optionalText(80),
+  subtitle: optionalText(160),
+  /** Present only for editor-curated sections (key starts with "custom-"). */
+  custom: z
+    .object({
+      kind: z.enum(['songs', 'artists']),
+      ids: z.array(id).max(24).default([]),
+    })
+    .optional(),
+});
+
+export const sectionsSchema = z
+  .object({ items: z.array(sectionItemSchema).max(40).default([]) })
+  .superRefine((v, ctx) => {
+    const seen = new Set<string>();
+    v.items.forEach((item, i) => {
+      if (seen.has(item.key)) ctx.addIssue({ code: 'custom', message: `Duplicate section "${item.key}"`, path: ['items', i, 'key'] });
+      seen.add(item.key);
+      const isCustom = item.key.startsWith('custom-');
+      if (isCustom && !item.custom) ctx.addIssue({ code: 'custom', message: 'Custom section needs a kind', path: ['items', i] });
+      if (isCustom && !item.title) ctx.addIssue({ code: 'custom', message: 'Custom sections need a title', path: ['items', i, 'title'] });
+      if (!isCustom && !BUILTIN_KEYS.has(item.key))
+        ctx.addIssue({ code: 'custom', message: `Unknown section "${item.key}"`, path: ['items', i, 'key'] });
+    });
+  });
+
+export const chartSchema = z.object({
+  title: optionalText(60),
+  size: z.number().int().min(5).max(25).default(10),
+  /** Always shown first, in this order. */
+  pinnedSongIds: z.array(id).max(10).default([]),
+  /** Never shown in the chart. */
+  excludedSongIds: z.array(id).max(200).default([]),
+});
+
+export const SCHEMAS = {
+  coverStory: coverStorySchema,
+  announcement: announcementSchema,
+  ticker: tickerSchema,
+  sections: sectionsSchema,
+  chart: chartSchema,
+} as const;
+
+export type SettingKey = keyof typeof SCHEMAS;
+export type SiteConfig = { [K in SettingKey]: z.output<(typeof SCHEMAS)[K]> };
+export const SETTING_KEYS = Object.keys(SCHEMAS) as SettingKey[];
+
+/** Adds any built-in sections missing from a saved layout (e.g. ones introduced later). */
+export function normalizeSections(value: SiteConfig['sections']): SiteConfig['sections'] {
+  const present = new Set(value.items.map((i) => i.key));
+  const missing = BUILTIN_SECTIONS.filter((s) => !present.has(s.key)).map((s) => ({
+    key: s.key,
+    visible: true,
+    title: null,
+    subtitle: null,
+  }));
+  return { items: [...value.items, ...missing] };
+}
+
+function defaults(): SiteConfig {
+  return {
+    coverStory: coverStorySchema.parse({}),
+    announcement: announcementSchema.parse({}),
+    ticker: tickerSchema.parse({}),
+    sections: normalizeSections({ items: [] }),
+    chart: chartSchema.parse({}),
+  };
+}
+
+// ---------- Store ----------
+
+const TTL_MS = 30_000;
+let cache: { at: number; value: SiteConfig } | null = null;
+
+export async function getSiteConfig(): Promise<SiteConfig> {
+  if (cache && Date.now() - cache.at < TTL_MS) return cache.value;
+
+  const rows = await prisma.siteSetting.findMany();
+  const config = defaults();
+  for (const row of rows) {
+    if (!(row.key in SCHEMAS)) continue;
+    const key = row.key as SettingKey;
+    const parsed = SCHEMAS[key].safeParse(row.value);
+    // A row that no longer validates (schema changed) falls back to defaults.
+    if (parsed.success) (config as Record<SettingKey, unknown>)[key] = parsed.data;
+  }
+  config.sections = normalizeSections(config.sections);
+  cache = { at: Date.now(), value: config };
+  return config;
+}
+
+export async function saveSetting<K extends SettingKey>(key: K, value: SiteConfig[K], userId: string) {
+  const json = value as unknown as Prisma.InputJsonValue;
+  await prisma.siteSetting.upsert({
+    where: { key },
+    create: { key, value: json, updatedById: userId },
+    update: { value: json, updatedById: userId },
+  });
+  cache = null;
+}

@@ -1,0 +1,175 @@
+@import 'tailwindcss';
+
+/*
+ * DHH/CULTURE "street zine" theme: off-white paper, black ink, saffron + red spot colours,
+ * halftone photos, tape and stickers. Sharp corners, hard offset shadows.
+ */
+@theme {
+  --color-paper: #f2ecdf; /* page background */
+  --color-ink: #16130f; /* black ink: text, borders, solid fills */
+  --color-bone: #16130f; /* primary text (kept as an alias of ink) */
+  --color-surface: #faf6ee; /* raised paper: cards, inputs */
+  --color-surface-2: #e8e0cf; /* recessed panels */
+  --color-surface-3: #dbd1bc;
+  --color-line: #c9bea7; /* hairlines */
+  --color-muted: #5c544a;
+  --color-dim: #8a8174;
+  --color-saffron: #f05a0a;
+  --color-saffron-soft: #b8470b; /* darker orange for text on paper */
+  --color-red: #d62839;
+  --color-pink: #d62839;
+  --color-neon: #d9f24a; /* highlighter */
+  --color-tape: rgb(236 222 170 / 0.85);
+
+  --font-display: 'Anton', 'Impact', sans-serif;
+  --font-sans: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Space Mono', ui-monospace, monospace;
+  --font-marker: 'Permanent Marker', cursive;
+  --font-logo: 'Archivo Black', 'Arial Black', sans-serif;
+
+  --animate-ticker: ticker 40s linear infinite;
+  @keyframes ticker {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
+    }
+  }
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+  }
+  body {
+    @apply bg-paper text-ink font-sans antialiased;
+    /* paper grain */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.09'/%3E%3C/svg%3E");
+  }
+  ::selection {
+    @apply bg-neon text-ink;
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-saffron;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation: none !important;
+      transition: none !important;
+    }
+  }
+}
+
+@utility display {
+  @apply font-display uppercase tracking-wide leading-[0.9];
+}
+@utility mono {
+  @apply font-mono text-[11px] font-bold uppercase tracking-[0.12em];
+}
+@utility marker {
+  @apply font-marker normal-case;
+}
+
+/* Hard offset shadow, the zine's signature */
+@utility shadow-hard {
+  box-shadow: 4px 4px 0 var(--color-ink);
+}
+@utility shadow-hard-sm {
+  box-shadow: 2px 2px 0 var(--color-ink);
+}
+@utility shadow-hard-saffron {
+  box-shadow: 4px 4px 0 var(--color-saffron);
+}
+
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 border-2 border-ink px-5 py-2.5 font-mono text-xs font-bold uppercase tracking-wider
+    transition-all duration-150 hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-hard active:translate-x-0 active:translate-y-0
+    active:shadow-none disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-x-0 disabled:hover:translate-y-0
+    disabled:hover:shadow-none;
+}
+@utility btn-primary {
+  @apply btn bg-ink text-paper hover:bg-saffron hover:text-ink;
+}
+@utility btn-ghost {
+  @apply btn bg-surface text-ink;
+}
+@utility btn-neon {
+  @apply btn bg-saffron text-ink;
+}
+@utility input {
+  @apply w-full border-2 border-ink bg-surface px-3.5 py-2.5 text-sm text-ink placeholder:text-dim transition
+    focus:shadow-hard-saffron focus:outline-none;
+}
+@utility label {
+  @apply mono mb-1.5 block text-muted;
+}
+@utility chip {
+  @apply inline-flex items-center gap-1 border-2 border-ink bg-surface px-2.5 py-1 font-mono text-[11px] font-bold uppercase
+    tracking-wider text-ink transition hover:bg-neon;
+}
+@utility chip-active {
+  @apply bg-ink text-paper hover:bg-ink;
+}
+@utility card {
+  @apply block transition;
+}
+@utility sticker {
+  @apply inline-block -rotate-3 border-2 border-ink bg-neon px-2 py-0.5 font-display text-sm uppercase tracking-wider text-ink shadow-hard-sm;
+}
+/* Highlighter-pen underline for emphasised words */
+@utility highlight {
+  background: linear-gradient(transparent 55%, var(--color-neon) 55%, var(--color-neon) 90%, transparent 90%);
+}
+
+/* Halftone dot overlay for photos */
+.halftone {
+  position: relative;
+  isolation: isolate;
+}
+.halftone > img {
+  filter: grayscale(1) contrast(1.25) brightness(1.05);
+  transition: filter 0.3s;
+}
+.halftone::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(circle at center, rgb(22 19 15 / 0.55) 0.9px, transparent 1.4px);
+  background-size: 4px 4px;
+  mix-blend-mode: multiply;
+  opacity: 0.55;
+  transition: opacity 0.3s;
+}
+.group:hover .halftone > img,
+.halftone.halftone-live > img {
+  filter: grayscale(0) contrast(1.05);
+}
+.group:hover .halftone::after,
+.halftone.halftone-live::after {
+  opacity: 0;
+}
+
+/* Masking-tape strip */
+.tape::before {
+  content: '';
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  width: 72px;
+  height: 24px;
+  transform: translateX(-50%) rotate(-4deg);
+  background: var(--color-tape);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.15);
+  z-index: 2;
+}
+
+.scrollbar-none {
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
