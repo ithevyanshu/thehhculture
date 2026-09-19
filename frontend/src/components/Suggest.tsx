@@ -97,7 +97,7 @@ function SuggestModal({ prefill, onClose }: { prefill: Prefill; onClose: () => v
         <button onClick={onClose} className="absolute top-3 right-3 p-1.5 hover:bg-neon" aria-label="Close">
           <X size={18} />
         </button>
-        <p className="marker text-xl text-saffron-soft">feeling something's missing?</p>
+        <p className="mono text-saffron-soft">feeling something's missing?</p>
         <h2 className="display mt-1 text-4xl">Tell the editors</h2>
 
         {!user ? (
@@ -194,7 +194,7 @@ function SuggestModal({ prefill, onClose }: { prefill: Prefill; onClose: () => v
                       {SUGGESTION_STATUS_LABEL[s.status]}
                     </span>
                   </div>
-                  {s.adminNote && <p className="marker mt-1 text-saffron-soft">editor: {s.adminNote}</p>}
+                  {s.adminNote && <p className="mt-1 text-sm font-semibold text-saffron-soft">editor: {s.adminNote}</p>}
                 </li>
               ))}
             </ul>
@@ -209,7 +209,7 @@ function SuggestModal({ prefill, onClose }: { prefill: Prefill; onClose: () => v
 export function MissingHere({ text, onClick }: { text: string; onClick: () => void }) {
   return (
     <div className="mb-16 flex flex-col items-start justify-between gap-3 border-2 border-dashed border-ink p-4 sm:flex-row sm:items-center">
-      <p className="marker text-lg">{text}</p>
+      <p className="text-lg font-bold">{text}</p>
       <button onClick={onClick} className="btn-ghost shrink-0">
         <Lightbulb size={14} /> Tell the editors
       </button>

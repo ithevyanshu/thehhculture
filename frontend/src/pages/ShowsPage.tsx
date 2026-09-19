@@ -72,7 +72,7 @@ function Season({ season }: { season: ShowSeason }) {
           {featured.map((c) => (
             <div key={c.artist.id + c.role}>
               <ArtistTile artist={c.artist} />
-              {c.placement && <p className="marker mt-1 truncate text-sm text-saffron-soft" title={c.placement}>“{c.placement}”</p>}
+              {c.placement && <p className="mono mt-1.5 truncate text-saffron-soft" title={c.placement}>“{c.placement}”</p>}
             </div>
           ))}
         </div>

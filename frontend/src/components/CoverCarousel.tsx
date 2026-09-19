@@ -18,7 +18,7 @@ function CoverSlide({ hero, tilt }: { hero: ArtistHero; tilt: 'left' | 'right' }
       <div className="relative mx-auto w-full max-w-sm md:max-w-none">
         <div className={`tape relative border border-ink/10 bg-surface p-3 pb-10 shadow-hard ${tilt === 'left' ? '-rotate-2' : 'rotate-2'}`}>
           <Artwork src={artist.imageUrl} name={artist.name} seed={artist.slug} />
-          <p className="marker absolute right-4 bottom-2 text-lg text-ink/70">{artist.region?.name ?? 'India'}</p>
+          <p className="mono absolute right-4 bottom-3.5 text-ink/70">{artist.region?.name ?? 'India'}</p>
         </div>
         <span className="sticker absolute -top-3 -right-2 z-10 rotate-6 !text-base">{hero.kicker ?? HERO_STICKER[reason]}</span>
       </div>
@@ -29,7 +29,7 @@ function CoverSlide({ hero, tilt }: { hero: ArtistHero; tilt: 'left' | 'right' }
         {blurb && <p className="mt-5 line-clamp-6 max-w-xl text-lg leading-relaxed">{blurb}</p>}
         {song && (
           <Link to={`/songs/${song.slug}`} className="group mt-6 inline-flex items-center gap-3">
-            <span className="marker text-xl text-saffron-soft">{reason === 'editorial' ? 'press play →' : 'latest drop →'}</span>
+            <span className="mono text-saffron-soft">{reason === 'editorial' ? 'press play →' : 'latest drop →'}</span>
             <span className="highlight text-xl font-bold uppercase">{song.title}</span>
           </Link>
         )}

@@ -14,7 +14,7 @@ function AuthShell({ title, subtitle, children }: { title: string; subtitle: Rea
           <br />
           Your <span className="text-saffron">issue.</span>
         </p>
-        <p className="marker mt-6 max-w-sm -rotate-1 text-xl text-muted">
+        <p className="mt-6 max-w-sm text-lg font-semibold text-muted">
           follow who you rate, save what you replay - we'll print the rest of the scene for you.
         </p>
       </div>

@@ -16,7 +16,7 @@ export function EmbedPlayer({ song }: { song: SongCard }) {
   if (!hasSpotify && !hasYoutube) {
     return (
       <div className="flex flex-wrap items-center justify-between gap-4 border-2 border-dashed border-ink bg-surface p-5">
-        <p className="marker text-lg">press play elsewhere →</p>
+        <p className="mono">press play elsewhere →</p>
         <div className="flex flex-wrap gap-2">
           <a href={spotifySearchUrl(query)} target="_blank" rel="noreferrer" className="btn-ghost">
             <Music2 size={16} /> Spotify <ExternalLink size={14} />
