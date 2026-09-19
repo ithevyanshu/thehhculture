@@ -312,6 +312,15 @@ export function Layout() {
             </p>
           </div>
           <div className="flex flex-col gap-3 md:items-end">
+            <div className="md:text-right">
+              <p className="mono text-paper/60">Contact / press / submissions</p>
+              <a
+                href="mailto:thedesihiphopculture@gmail.com"
+                className="mt-1 inline-block text-lg font-bold break-all text-saffron underline decoration-2 underline-offset-4 hover:text-paper"
+              >
+                thedesihiphopculture@gmail.com
+              </a>
+            </div>
             <FooterSuggestLink />
             <p className="mono text-paper/60">
               DHH/CULTURE · Issue #{issueNumber()} · {issueDate()} · Printed on the internet

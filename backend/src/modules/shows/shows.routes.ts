@@ -34,6 +34,12 @@ export const showCardSelect = {
   },
 } satisfies Prisma.ShowSelect;
 
+/** "3rd" -> 3, "6-10" -> 6, "Top 16 / active" -> 16, unknown -> last. */
+export function placementRank(p: string | null) {
+  const n = p?.match(/\d+/)?.[0];
+  return n ? Number(n) : 999;
+}
+
 /** All shows with their latest season's winner(s). */
 export async function listShows() {
   const shows = await prisma.show.findMany({ orderBy: { name: 'asc' }, select: showCardSelect });
@@ -61,7 +67,7 @@ showsRouter.get('/:slug', optionalAuth, async (req, res) => {
           number: true,
           year: true,
           title: true,
-          cast: { select: { role: true, artist: { select: artistCardSelect } } },
+          cast: { select: { role: true, placement: true, artist: { select: artistCardSelect } } },
         },
       },
     },
@@ -78,8 +84,13 @@ showsRouter.get('/:slug', optionalAuth, async (req, res) => {
       seasons: show.seasons.map((s) => ({
         ...s,
         cast: [...s.cast]
-          .sort((a, b) => ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role) || a.artist.name.localeCompare(b.artist.name))
-          .map((c) => ({ role: c.role, artist: flagged.get(c.artist.id)! })),
+          .sort(
+            (a, b) =>
+              ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role) ||
+              placementRank(a.placement) - placementRank(b.placement) ||
+              a.artist.name.localeCompare(b.artist.name),
+          )
+          .map((c) => ({ role: c.role, placement: c.placement, artist: flagged.get(c.artist.id)! })),
       })),
     },
   });

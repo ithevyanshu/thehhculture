@@ -18,7 +18,7 @@ export function normalizeHandle(input: string): string {
     .replace(/δ/g, 'a')
     .replace(/[\s-]+/g, '_')
     .replace(/[^a-z0-9._]/g, '')
-    .replace(/_{2,}/g, '_')
+    .replace(/[._]{2,}/g, '_') // "Mr. Maxx" -> mr_maxx, not mr._maxx
     .replace(/^[._]+|[._]+$/g, '')
     .slice(0, 30);
 }

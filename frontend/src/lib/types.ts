@@ -241,7 +241,7 @@ export interface ShowSeason {
   number: number;
   year: number | null;
   title: string | null;
-  cast: { role: ShowRole; artist: ArtistCard }[];
+  cast: { role: ShowRole; placement?: string | null; artist: ArtistCard }[];
 }
 
 export interface ShowDetail extends Omit<ShowCard, '_count' | 'latestSeason'> {
@@ -250,5 +250,6 @@ export interface ShowDetail extends Omit<ShowCard, '_count' | 'latestSeason'> {
 
 export interface ShowAppearance {
   role: ShowRole;
+  placement?: string | null;
   season: { number: number; year: number | null; title: string | null; show: { slug: string; name: string } };
 }

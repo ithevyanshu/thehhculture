@@ -121,6 +121,7 @@ The seed loads **15 artists / 10 albums / 31 songs** so the app isn't empty on d
 | `npm run images:fetch` | Fill missing artist photos from Wikipedia (`-- --force` re-fetches all) |
 | `npm run socials:fetch` | Fill missing artist Instagram links from Wikidata (`-- --force` re-checks all) |
 | `npm run shows:seed` | Load/refresh MTV Hustle S1–4 and Legacy S1 (idempotent) |
+| `npm run shows:import` | Import full show casts from `prisma/data/show-contestants.json` (MTV Hustle S1–5, LEGACY S1). Add `-- --dry` to preview |
 | `npm run handles:backfill` | Give artists without a handle one (Instagram username, else stage_name) |
 
 ## Deploying

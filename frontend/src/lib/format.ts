@@ -77,7 +77,7 @@ export function toHandle(input: string) {
     .replace(/δ/g, 'a')
     .replace(/[\s-]+/g, '_')
     .replace(/[^a-z0-9._]/g, '')
-    .replace(/_{2,}/g, '_')
+    .replace(/[._]{2,}/g, '_')
     .replace(/^[._]+|[._]+$/g, '')
     .slice(0, 30);
 }

@@ -58,7 +58,7 @@ showsAdminRouter.get('/shows/:id', async (req, res) => {
     include: {
       seasons: {
         orderBy: { number: 'desc' },
-        include: { cast: { select: { role: true, artist: { select: { id: true, slug: true, name: true, handle: true, imageUrl: true } } } } },
+        include: { cast: { select: { role: true, placement: true, artist: { select: { id: true, slug: true, name: true, handle: true, imageUrl: true } } } } },
       },
     },
   });
@@ -116,7 +116,18 @@ showsAdminRouter.put('/seasons/:id/cast', async (req, res) => {
   const { cast } = parse(
     z.object({
       cast: z
-        .array(z.object({ artistId: z.string().min(1), role: z.nativeEnum(ShowRole) }))
+        .array(
+          z.object({
+            artistId: z.string().min(1),
+            role: z.nativeEnum(ShowRole),
+            placement: z
+              .string()
+              .trim()
+              .max(40)
+              .nullish()
+              .transform((v) => v || null),
+          }),
+        )
         .max(200),
     }),
     req.body,

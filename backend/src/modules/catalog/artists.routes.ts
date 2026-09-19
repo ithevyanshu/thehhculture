@@ -137,6 +137,7 @@ artistsRouter.get('/:slug', optionalAuth, async (req, res) => {
       orderBy: [{ season: { year: { sort: 'desc', nulls: 'last' } } }, { season: { number: 'desc' } }],
       select: {
         role: true,
+        placement: true,
         season: { select: { number: true, year: true, title: true, show: { select: { slug: true, name: true } } } },
       },
     }),

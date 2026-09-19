@@ -57,7 +57,7 @@ function Season({ season }: { season: ShowSeason }) {
                   c.role === 'WINNER' ? 'bg-saffron' : c.role === 'RUNNER_UP' ? 'bg-neon' : 'bg-surface'
                 }`}
               >
-                {c.role === 'WINNER' && <Trophy size={12} />} {SHOW_ROLE_LABEL[c.role]}
+                {c.role === 'WINNER' && <Trophy size={12} />} {c.placement ?? SHOW_ROLE_LABEL[c.role]}
               </span>
               <ArtistTile artist={c.artist} />
             </div>
@@ -93,6 +93,7 @@ function Season({ season }: { season: ShowSeason }) {
             {contestants.map((c) => (
               <Link key={c.artist.id} to={`/artists/${c.artist.slug}`} className="chip !normal-case" title={c.artist.name}>
                 {at(c.artist)}
+                {c.placement && <span className="opacity-60"> · {c.placement}</span>}
               </Link>
             ))}
           </div>

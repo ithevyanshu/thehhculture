@@ -13,7 +13,7 @@ interface AdminSeason {
   number: number;
   year: number | null;
   title: string | null;
-  cast: { role: ShowRole; artist: HandleRef & { imageUrl: string | null } }[];
+  cast: { role: ShowRole; placement: string | null; artist: HandleRef & { imageUrl: string | null } }[];
 }
 interface AdminShow {
   id: string;
@@ -50,14 +50,15 @@ function useInvalidateShows() {
 
 function SeasonEditor({ season, onChanged }: { season: AdminSeason; onChanged: () => void }) {
   const [meta, setMeta] = useState({ number: season.number, year: season.year ?? '', title: season.title ?? '' });
-  const [cast, setCast] = useState(season.cast.map((c) => ({ role: c.role, artist: c.artist as HandleRef })));
+  const [cast, setCast] = useState(season.cast.map((c) => ({ role: c.role, placement: c.placement ?? '', artist: c.artist as HandleRef })));
   const [newRole, setNewRole] = useState<ShowRole>('CONTESTANT');
   const dialog = useDialog();
   const [status, setStatus] = useState<{ ok: boolean; msg: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
   const dirtyCast =
-    JSON.stringify(cast.map((c) => [c.artist.id, c.role])) !== JSON.stringify(season.cast.map((c) => [c.artist.id, c.role]));
+    JSON.stringify(cast.map((c) => [c.artist.id, c.role, c.placement])) !==
+    JSON.stringify(season.cast.map((c) => [c.artist.id, c.role, c.placement ?? '']));
   const dirtyMeta = meta.number !== season.number || String(meta.year) !== String(season.year ?? '') || meta.title !== (season.title ?? '');
 
   const save = async () => {
@@ -68,7 +69,7 @@ function SeasonEditor({ season, onChanged }: { season: AdminSeason; onChanged: (
       if (dirtyCast)
         await api(`/admin/seasons/${season.id}/cast`, {
           method: 'PUT',
-          body: { cast: cast.map((c) => ({ artistId: c.artist.id, role: c.role })) },
+          body: { cast: cast.map((c) => ({ artistId: c.artist.id, role: c.role, placement: c.placement })) },
         });
       setStatus({ ok: true, msg: 'Saved' });
       onChanged();
@@ -127,6 +128,14 @@ function SeasonEditor({ season, onChanged }: { season: AdminSeason; onChanged: (
                   </option>
                 ))}
               </select>
+              <input
+                className="input !w-24 !py-1"
+                placeholder="Finish"
+                title='Placement, e.g. "3rd", "6-10", "Eliminated - Ep 2"'
+                value={c.placement}
+                onChange={(e) => setCast(cast.map((x, j) => (j === i ? { ...x, placement: e.target.value } : x)))}
+                aria-label={`Placement for ${at(c.artist)}`}
+              />
               <span className="mono !normal-case">{at(c.artist)}</span>
               <span className="truncate text-sm text-muted">{c.artist.name}</span>
               <button
@@ -153,7 +162,7 @@ function SeasonEditor({ season, onChanged }: { season: AdminSeason; onChanged: (
               single
               placeholder={`Add ${SHOW_ROLE_LABEL[newRole].toLowerCase()} by @handle…`}
               onPick={(artist) => {
-                if (!cast.some((c) => c.artist.id === artist.id && c.role === newRole)) setCast([...cast, { artist, role: newRole }]);
+                if (!cast.some((c) => c.artist.id === artist.id && c.role === newRole)) setCast([...cast, { artist, role: newRole, placement: '' }]);
               }}
             />
           </div>

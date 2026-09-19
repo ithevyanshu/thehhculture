@@ -123,7 +123,7 @@ export function ArtistPage() {
                   }`}
                 >
                   {a.role === 'WINNER' && '🏆 '}
-                  {a.season.show.name} S{a.season.number} · {SHOW_ROLE_LABEL[a.role]}
+                  {a.season.show.name} S{a.season.number} · {a.role === 'CONTESTANT' && a.placement ? a.placement : SHOW_ROLE_LABEL[a.role]}
                 </Link>
               ))}
             </div>

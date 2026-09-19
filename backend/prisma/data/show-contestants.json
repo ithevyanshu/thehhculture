@@ -1,0 +1,1171 @@
+{
+  "shows": [
+    {
+      "name": "MTV Hustle",
+      "seasons": [
+        {
+          "number": 1,
+          "title": null,
+          "year": 2019,
+          "judges": [
+            "Raftaar",
+            "Nucleya",
+            "Raja Kumari"
+          ],
+          "hosts": [],
+          "contestants": [
+            {
+              "name": "M-Zee Bella",
+              "realName": "Deepak Singh",
+              "city": "",
+              "placement": "Winner",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "EPR",
+              "realName": "Santhanam Srinivasan Iyer",
+              "city": "",
+              "placement": "Runner-up",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "RCR",
+              "realName": "Rohit Kumar Chaudhary",
+              "city": "",
+              "placement": "3rd",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "King",
+              "realName": "Arpan Kumar Chandel",
+              "city": "",
+              "placement": "4th",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Shloka",
+              "realName": "Rahul Kumar Das (Karn)",
+              "city": "",
+              "placement": "5th",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Agsy",
+              "realName": "Agrita Dhawan",
+              "city": "",
+              "placement": "6/7",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Void",
+              "realName": "Gaurav Mankoti",
+              "city": "",
+              "placement": "6/7",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Raeza",
+              "realName": "Riya Panchal",
+              "city": "",
+              "placement": "8th",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Firaag",
+              "realName": "Lakshya Bhardwaj",
+              "city": "",
+              "placement": "9th",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Himan",
+              "realName": "Himanshu Joshi",
+              "city": "",
+              "placement": "10th",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Shetty Saa",
+              "realName": "Sagar Shetty",
+              "city": "",
+              "placement": "11th",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Zack",
+              "realName": "Akshay Kumar",
+              "city": "",
+              "placement": "12th",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "MC Heam",
+              "realName": "Hemant Dhyani",
+              "city": "",
+              "placement": "13th",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Star Nick",
+              "realName": "Nikita R Sharma",
+              "city": "",
+              "placement": "14th",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "NeeRu Pal",
+              "realName": "Neeru Pal",
+              "city": "",
+              "placement": "15th",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            }
+          ]
+        },
+        {
+          "number": 2,
+          "title": "Hustle 2.0",
+          "year": 2022,
+          "judges": [
+            "Badshah",
+            "EPR",
+            "Dino James",
+            "Dee MC",
+            "King"
+          ],
+          "hosts": [],
+          "contestants": [
+            {
+              "name": "MC Square",
+              "realName": "Abhishek Bainsla",
+              "city": "",
+              "placement": "Winner",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Paradox",
+              "realName": "Tanishq Singh",
+              "city": "",
+              "placement": "Runner-up",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Nazz",
+              "realName": "Nihar Hodawadekar",
+              "city": "",
+              "placement": "3rd",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Gravity",
+              "realName": "Akshay Poojary",
+              "city": "",
+              "placement": "4th",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Spectra",
+              "realName": "Shubham Pal",
+              "city": "",
+              "placement": "5th",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Srushti Tawade",
+              "realName": "Srushti Tawade",
+              "city": "",
+              "placement": "6-10",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Wicked Sunny",
+              "realName": "Vikalp Dwivedi",
+              "city": "",
+              "placement": "6-10",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Super Manikk",
+              "realName": "Mukul Monga",
+              "city": "",
+              "placement": "6-10",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "UK Rapi Boy",
+              "realName": "Mahendra Singh Khatri",
+              "city": "",
+              "placement": "6-10",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "QK",
+              "realName": "Aarya Jadhao",
+              "city": "",
+              "placement": "6-10",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Panther",
+              "realName": "Anubhav Shukla",
+              "city": "",
+              "placement": "11-12",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "MC Headshot",
+              "realName": "Tamojit Chatterjee",
+              "city": "",
+              "placement": "11-12",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "GD47",
+              "realName": "Gagandeep Singh",
+              "city": "",
+              "placement": "13th",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "LXSH",
+              "realName": "Laksh Parihar",
+              "city": "",
+              "placement": "14-15",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "RHYME",
+              "realName": "Aditya Nirgude",
+              "city": "",
+              "placement": "14-15",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Khullar G",
+              "realName": "Gaurav Khullar",
+              "city": "",
+              "placement": "16th",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "UNB",
+              "realName": "Ugen Namgyal Bhutia",
+              "city": "",
+              "placement": "17-20",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Apka Bobby",
+              "realName": "Saquib Ansari",
+              "city": "",
+              "placement": "17-20",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Khanzaadi",
+              "realName": "Firoza Khan",
+              "city": "",
+              "placement": "17-20",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Shlovij",
+              "realName": "Shlovij",
+              "city": "",
+              "placement": "17-20",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            }
+          ]
+        },
+        {
+          "number": 3,
+          "title": null,
+          "year": 2023,
+          "judges": [
+            "Badshah",
+            "EPR",
+            "Dino James",
+            "Dee MC",
+            "Ikka"
+          ],
+          "hosts": [],
+          "contestants": [
+            {
+              "name": "Uday",
+              "realName": "Uday Pandhi",
+              "city": "",
+              "placement": "Winner",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Bassick",
+              "realName": "Shlok Verma",
+              "city": "",
+              "placement": "Runner-up",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "100 RBH",
+              "realName": "Saurabh Abhyankar",
+              "city": "",
+              "placement": "3rd",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Mrunal Shankar",
+              "realName": "Mrunal Shankar Dhole",
+              "city": "",
+              "placement": "4-6",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Vijay Dada",
+              "realName": "Vijay Kumar",
+              "city": "",
+              "placement": "4-6",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Kayden Sharma",
+              "realName": "Kayden Sharma",
+              "city": "",
+              "placement": "4-6",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Burrah",
+              "realName": "Jasdeep Singh",
+              "city": "",
+              "placement": "7-10",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Gaush",
+              "realName": "Gauresh Kale",
+              "city": "",
+              "placement": "7-10",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Rap ID",
+              "realName": "Mayank Rawat",
+              "city": "",
+              "placement": "7-10",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Shen B",
+              "realName": "Shayaan Bhat",
+              "city": "",
+              "placement": "7-10",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Bob B. Randhawa",
+              "realName": "Bobby Randhawa",
+              "city": "",
+              "placement": "11th",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Poet Shaf",
+              "realName": "Shaheer Faisal",
+              "city": "",
+              "placement": "12-13",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Vish",
+              "realName": "",
+              "city": "12-13",
+              "placement": "",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Prince The Artist Singh",
+              "realName": "",
+              "city": "14th",
+              "placement": "",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Shady Mellow",
+              "realName": "Swagat Yein",
+              "city": "",
+              "placement": "15th",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Badal",
+              "realName": "Sahil Badal",
+              "city": "",
+              "placement": "16th",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Jaya",
+              "realName": "Jaya Rohillaa",
+              "city": "",
+              "placement": "17-20",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Lekhak",
+              "realName": "",
+              "city": "17-20",
+              "placement": "",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Meetoride",
+              "realName": "",
+              "city": "17-20",
+              "placement": "",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "MNDP",
+              "realName": "Mandeep Singh",
+              "city": "",
+              "placement": "17-20",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            }
+          ]
+        },
+        {
+          "number": 4,
+          "title": "Hip Hop Don't Stop",
+          "year": 2024,
+          "judges": [
+            "Raftaar",
+            "Ikka",
+            "EPR",
+            "Dino James",
+            "Dee MC",
+            "Raga"
+          ],
+          "hosts": [],
+          "contestants": [
+            {
+              "name": "Lashcurry",
+              "realName": "Vinayak Lashkari",
+              "city": "",
+              "placement": "Winner",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Naam Sujal",
+              "realName": "Sujal Dupare",
+              "city": "",
+              "placement": "Runner-up",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Dharmik",
+              "realName": "Madhusudhan Sharma",
+              "city": "",
+              "placement": "3rd",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "99side",
+              "realName": "Yash Dandge",
+              "city": "",
+              "placement": "4-6",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Vichaar",
+              "realName": "Abhin Pandita",
+              "city": "Dehradun, Uttarakhand",
+              "placement": "4-6",
+              "about": "Story-driven rapper; his track 'Murran' drew on Kashmiri Pandit roots.",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Siyaahi",
+              "realName": "Aniket Bhatt",
+              "city": "",
+              "placement": "4-6",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Mad Trip",
+              "realName": "Sujal Shah",
+              "city": "",
+              "placement": "7-10",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Sense",
+              "realName": "Aakash Gopal",
+              "city": "Dharavi, Mumbai",
+              "placement": "7-10",
+              "about": "Mumbai rapper; performed 'All Night' in the opening round.",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "PHO",
+              "realName": "Akriti Lal",
+              "city": "Delhi",
+              "placement": "7-10",
+              "about": "Female rapper from Delhi; performed 'Jaadu' in the opening round.",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Ghaint Jxtt",
+              "realName": "Ishmeet Atwal",
+              "city": "",
+              "placement": "7-10",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Little Bhatia",
+              "realName": "Aditya Singh",
+              "city": "",
+              "placement": "11-12",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Ajitesh Bhati",
+              "realName": "Ajitesh Bhati",
+              "city": "Greater Noida, Uttar Pradesh",
+              "placement": "11-12",
+              "about": "Regional-rooted rapper; performed 'O Baapu'.",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Danish",
+              "realName": "Danish Ahmad",
+              "city": "",
+              "placement": "13-14",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "K!LLSWITCH",
+              "realName": "Armaan Yadav",
+              "city": "",
+              "placement": "13-14",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Rajjo",
+              "realName": "Ayush Rajoria",
+              "city": "",
+              "placement": "15th",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Devil The Rhymer",
+              "realName": "Abhay Prasad",
+              "city": "",
+              "placement": "16th",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "DOTM",
+              "realName": "Dev Pratap Singh",
+              "city": "",
+              "placement": "17-19",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Manisten",
+              "realName": "Manpreet Singh",
+              "city": "",
+              "placement": "17-19",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Volt",
+              "realName": "",
+              "city": "",
+              "placement": "17-19",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            }
+          ]
+        },
+        {
+          "number": 5,
+          "title": "Apna Homeground",
+          "year": 2026,
+          "judges": [
+            "Badshah",
+            "EPR",
+            "Agsy",
+            "MC Square",
+            "Paradox"
+          ],
+          "hosts": [],
+          "contestants": [
+            {
+              "name": "Akshat Jakhar",
+              "realName": "Akshat Jakhar",
+              "city": "Rajasthan",
+              "placement": "Top 16 / active",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Ansh4sure",
+              "realName": "Ansh Sharma",
+              "city": "Faridabad, Haryana",
+              "placement": "Top 16 / active",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Bhaktaaa",
+              "realName": "",
+              "city": "Panipat, Haryana",
+              "placement": "Top 16 / active",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Dflacko",
+              "realName": "Bhaskar Mishra",
+              "city": "Delhi",
+              "placement": "Top 16 / active",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Dhadkan",
+              "realName": "Daksh",
+              "city": "Sonipat, Haryana",
+              "placement": "Top 16 / active",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Farak",
+              "realName": "",
+              "city": "Lucknow, Uttar Pradesh",
+              "placement": "Top 16 / active",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Harmeeet",
+              "realName": "Harmeeet",
+              "city": "Bhopal, Madhya Pradesh",
+              "placement": "Top 16 / active",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "OG Tehran",
+              "realName": "",
+              "city": "Delhi",
+              "placement": "Top 16 / active",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Parv",
+              "realName": "Parv Sharma",
+              "city": "Moradabad, Uttar Pradesh",
+              "placement": "Top 16 / active",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "R-Mridul",
+              "realName": "Mridul",
+              "city": "Lucknow, Uttar Pradesh",
+              "placement": "Top 16 / active",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Raaj Babu",
+              "realName": "",
+              "city": "Jamshedpur, Jharkhand",
+              "placement": "Top 16 / active",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Siroyi",
+              "realName": "Siroyi",
+              "city": "Mumbai, Maharashtra",
+              "placement": "Top 16 / active",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Txama",
+              "realName": "Rahul Tacho",
+              "city": "Anini, Arunachal Pradesh",
+              "placement": "Top 16 / active",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "WhysoKai",
+              "realName": "",
+              "city": "Jodhpur / Mumbai",
+              "placement": "Top 16 / active",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Xeemo",
+              "realName": "",
+              "city": "Mathura, Uttar Pradesh",
+              "placement": "Top 16 / active",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Anushka",
+              "realName": "Anushka Baduwal",
+              "city": "Rishikesh, Uttarakhand",
+              "placement": "Eliminated – Episode 5",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Eddy",
+              "realName": "Karan Verma",
+              "city": "Muzaffarnagar, Uttar Pradesh",
+              "placement": "Eliminated – Episode 2",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Gargi",
+              "realName": "Gargi",
+              "city": "Jaipur, Rajasthan",
+              "placement": "Eliminated – early round",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Hruday",
+              "realName": "Hruday",
+              "city": "Navi Mumbai, Maharashtra",
+              "placement": "Eliminated – early round",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Split",
+              "realName": "Yashad Gupta",
+              "city": "Faridabad, Haryana",
+              "placement": "Eliminated – early round",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Vasu Kainth",
+              "realName": "Vasu Kainth",
+              "city": "Ludhiana / Mumbai",
+              "placement": "Eliminated – early round",
+              "about": "",
+              "instagram": "",
+              "youtube": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Legacy",
+      "seasons": [
+        {
+          "number": 1,
+          "title": null,
+          "year": 2026,
+          "judges": [
+            "Raftaar",
+            "KR$NA"
+          ],
+          "hosts": [],
+          "contestants": [
+            {
+              "name": "Akki On The Mic",
+              "realName": "Anuj Kusmaiya",
+              "city": "Delhi – Pitampura",
+              "placement": "",
+              "about": "Rapper known for technical delivery, hooks and independent releases.",
+              "instagram": "@anujkusmaiya",
+              "youtube": "https://www.youtube.com/@AkkiOnTheMic"
+            },
+            {
+              "name": "Anshious",
+              "realName": "",
+              "city": "",
+              "placement": "",
+              "about": "Wild-card entrant who reached the later stages of LEGACY.",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Prathamesh",
+              "realName": "Prathamesh",
+              "city": "Nagpur, Maharashtra",
+              "placement": "",
+              "about": "Nagpur rapper associated with the Nagpur Moshpit Corporation and local hip-hop community.",
+              "instagram": "@prathamesh.fr",
+              "youtube": ""
+            },
+            {
+              "name": "Kirdaar",
+              "realName": "",
+              "city": "Delhi",
+              "placement": "",
+              "about": "Storytelling-oriented rapper with Hindi/Punjabi rap identity.",
+              "instagram": "@kirdaarmusic",
+              "youtube": "https://www.youtube.com/@kirdaarmusic"
+            },
+            {
+              "name": "Husxain",
+              "realName": "",
+              "city": "Mumbai, Maharashtra",
+              "placement": "",
+              "about": "Mumbai rapper with a contemporary street-rap sound.",
+              "instagram": "@husxain",
+              "youtube": ""
+            },
+            {
+              "name": "Bawa Pahadi / Rap ID",
+              "realName": "",
+              "city": "Solan, Himachal Pradesh",
+              "placement": "",
+              "about": "Conscious rapper formerly known as Rap ID; later used the Bawa Pahadi identity.",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Bigg Smoke",
+              "realName": "",
+              "city": "Virar, Maharashtra",
+              "placement": "",
+              "about": "Mumbai-region rapper known for energetic, street-oriented performances.",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Manisten",
+              "realName": "",
+              "city": "Delhi",
+              "placement": "",
+              "about": "Rapper/producer with projects including The Heart Disk, Kuch Na Bol and Kaanch Ka Ghar.",
+              "instagram": "@manistenmusic",
+              "youtube": "https://www.youtube.com/@chochochaudhary"
+            },
+            {
+              "name": "Dean",
+              "realName": "",
+              "city": "Hisar, Haryana",
+              "placement": "",
+              "about": "Haryanvi rapper representing the Hisar/Haryana hip-hop scene.",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Chief",
+              "realName": "Tanishq Sharma",
+              "city": "Gurgaon / Haryana",
+              "placement": "",
+              "about": "Haryanvi rapper whose style is rooted in Haryanvi language and culture.",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "D. Raashi",
+              "realName": "",
+              "city": "Vadodara, Gujarat",
+              "placement": "",
+              "about": "Rapper representing Vadodara; competed through the Battle Round.",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "KNSS",
+              "realName": "Mohammad Kaif Suri",
+              "city": "Hyderabad, Telangana",
+              "placement": "",
+              "about": "Dakhni/Hindi rapper known for Hyderabad slang, humour and fast rap.",
+              "instagram": "@iam.knss",
+              "youtube": ""
+            },
+            {
+              "name": "Khushi TDT",
+              "realName": "",
+              "city": "Shamli, Uttar Pradesh",
+              "placement": "",
+              "about": "UP rapper with releases including One Hit Wonder, Kal Se Behtar and Victory Anthem.",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Gamak Sinha",
+              "realName": "",
+              "city": "Pune / Bangalore",
+              "placement": "",
+              "about": "Rapper with a Kathak background who combines classical dance influences with hip-hop.",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Vanither",
+              "realName": "",
+              "city": "Mumbai, Maharashtra",
+              "placement": "",
+              "about": "Mumbai-based rapper who competed through the Battle Round.",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Vishi",
+              "realName": "",
+              "city": "Tripura / Ahmedabad",
+              "placement": "",
+              "about": "Rapper associated with the Ahmedabad Cypher and a northeastern/regional perspective.",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Ace Lekhak",
+              "realName": "",
+              "city": "Sonipat, Haryana",
+              "placement": "",
+              "about": "Sonipat rapper/lyricist associated with independent collaborations and releases.",
+              "instagram": "@ace_lekhak",
+              "youtube": ""
+            },
+            {
+              "name": "Saniya MQ",
+              "realName": "",
+              "city": "Mumbai – Govandi, Maharashtra",
+              "placement": "",
+              "about": "Young rapper, poet and storyteller known for socially conscious writing.",
+              "instagram": "@saniya_mq",
+              "youtube": "https://www.youtube.com/@SaniyaMq"
+            },
+            {
+              "name": "Mars King",
+              "realName": "",
+              "city": "Patna, Bihar",
+              "placement": "",
+              "about": "Patna rapper who competed in the early stages of LEGACY.",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Khudraaz",
+              "realName": "",
+              "city": "New Delhi",
+              "placement": "",
+              "about": "Delhi-based rapper who competed in the early rounds.",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Rudraksh",
+              "realName": "",
+              "city": "Hyderabad, Telangana",
+              "placement": "",
+              "about": "Hyderabad-based rapper who competed in the early stages.",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Shia OG",
+              "realName": "",
+              "city": "Mumbai, Maharashtra",
+              "placement": "",
+              "about": "Mumbai rapper who appeared in the early LEGACY rounds.",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Mr. Maxx",
+              "realName": "",
+              "city": "Jaipur, Rajasthan",
+              "placement": "",
+              "about": "Jaipur rapper who appeared in the early rounds.",
+              "instagram": "",
+              "youtube": ""
+            },
+            {
+              "name": "Arya",
+              "realName": "",
+              "city": "Gorakhpur, Uttar Pradesh",
+              "placement": "",
+              "about": "Gorakhpur rapper who made a later run in the competition before elimination.",
+              "instagram": "",
+              "youtube": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -317,6 +317,8 @@ model ShowAppearance {
   seasonId String
   artistId String
   role     ShowRole
+  /** Free-text finish, e.g. "3rd", "6-10", "Eliminated – Episode 2". */
+  placement String?
   season   ShowSeason @relation(fields: [seasonId], references: [id], onDelete: Cascade)
   artist   Artist     @relation(fields: [artistId], references: [id], onDelete: Cascade)
 
