@@ -108,9 +108,11 @@ const BUILDERS: Record<string, Builder> = {
       kind: 'scenes',
       title: 'Scenes',
       subtitle: 'Rep your city',
+      // Biggest scenes only: the front-page block sits beside the 10-song chart.
       items: await prisma.region.findMany({
         where: { artists: { some: {} } },
-        orderBy: { name: 'asc' },
+        orderBy: [{ artists: { _count: 'desc' } }, { name: 'asc' }],
+        take: 8,
         select: { id: true, slug: true, name: true, state: true, _count: { select: { artists: true } } },
       }),
     },
