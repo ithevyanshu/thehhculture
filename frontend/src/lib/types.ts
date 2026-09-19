@@ -197,6 +197,8 @@ export type Tone = 'saffron' | 'ink' | 'red' | 'neon';
 
 export interface SiteInfo {
   announcement: { text: string; linkUrl: string | null; linkLabel: string | null; tone: Tone } | null;
+  /** Issue number printed across the site (set in Admin → Front page). */
+  issue?: number;
   ticker: {
     label: string;
     tone: Tone;

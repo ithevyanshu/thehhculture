@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { api } from './api';
+import { issueNumber } from './format';
 import { useAuth } from '../auth/AuthContext';
 import type {
   AlbumCard,
@@ -31,6 +32,9 @@ export const useShow = (slug: string) =>
   useQuery({ queryKey: ['show', slug], queryFn: () => api<{ show: ShowDetail }>(`/shows/${slug}`) });
 
 export const useSite = () => useQuery({ queryKey: ['site'], queryFn: () => api<SiteInfo>('/site'), staleTime: 60_000 });
+
+/** Issue number from the admin setting; week of the year until the site info loads. */
+export const useIssueNumber = () => useSite().data?.issue ?? issueNumber();
 
 export const useGenres = () =>
   useQuery({ queryKey: ['genres'], queryFn: () => api<{ items: Genre[] }>('/genres'), staleTime: 10 * 60_000 });

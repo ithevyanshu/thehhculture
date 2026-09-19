@@ -86,8 +86,14 @@ interface ArtistRef {
   name: string;
   imageUrl: string | null;
 }
+interface Issue {
+  mode: 'auto' | 'manual';
+  number: number;
+  countUp: boolean;
+  since: string | null;
+}
 interface SiteConfigResponse {
-  config: { coverStory: CoverStory; announcement: Announcement; ticker: Ticker; sections: { items: SectionItem[] }; chart: Chart };
+  config: { coverStory: CoverStory; announcement: Announcement; ticker: Ticker; sections: { items: SectionItem[] }; chart: Chart; issue: Issue };
   builtins: { key: string; label: string; audience: 'everyone' | 'signed-in' }[];
   refs: { songs: Record<string, SongRef>; artists: Record<string, ArtistRef> };
 }
@@ -648,6 +654,70 @@ const TONE_OPTIONS: { value: Tone; label: string; cls: string }[] = [
   { value: 'neon', label: 'Highlighter', cls: 'bg-neon text-ink' },
 ];
 
+/** Mirrors currentIssue() in backend/src/modules/site/config.ts, for the live preview. */
+function previewIssue(v: Issue, saved: Issue) {
+  if (v.mode === 'auto') {
+    const d = new Date();
+    const start = Date.UTC(d.getUTCFullYear(), 0, 1);
+    return Math.ceil(((d.getTime() - start) / 86_400_000 + new Date(start).getUTCDay() + 1) / 7);
+  }
+  // An unchanged number keeps counting from when it was saved; a new one starts now.
+  const since = v.number === saved.number && saved.mode === 'manual' ? saved.since : null;
+  if (!v.countUp || !since) return v.number;
+  return v.number + Math.max(0, Math.floor((Date.now() - Date.parse(since)) / (7 * 86_400_000)));
+}
+
+function IssuePanel({ initial }: { initial: Issue }) {
+  const [v, setV] = useState(initial);
+  const { save, saving, status } = useSaveSetting<Issue>('issue');
+
+  return (
+    <Panel
+      title="Issue number"
+      description='The "Issue #" printed on the front page masthead, cover stories and footer.'
+      onSave={() => save(v)}
+      saving={saving}
+      status={status}
+    >
+      <div className="flex flex-wrap items-end gap-6">
+        <Segmented
+          value={v.mode}
+          onChange={(mode) => 
+            // Start a hand-set number from the one readers see now.
+            setV({ ...v, mode, number: mode === 'manual' && initial.mode === 'auto' ? previewIssue(v, initial) : v.number })
+          }
+          options={[
+            { value: 'auto', label: 'Week of the year' },
+            { value: 'manual', label: 'Set it myself' },
+          ]}
+        />
+        {v.mode === 'manual' && (
+          <Field label="Issue number">
+            <input
+              type="number"
+              className="input !w-32"
+              min={1}
+              max={99999}
+              value={v.number}
+              onChange={(e) => setV({ ...v, number: Math.min(99_999, Math.max(1, Number(e.target.value) || 1)) })}
+            />
+          </Field>
+        )}
+        <p className="display text-4xl">Issue #{previewIssue(v, initial)}</p>
+      </div>
+      {v.mode === 'manual' && (
+        <label className="flex items-start gap-2 text-sm">
+          <input type="checkbox" className="mt-1" checked={v.countUp} onChange={(e) => setV({ ...v, countUp: e.target.checked })} />
+          <span>
+            <b>Count up every week.</b> Goes up by one each week from when you save, so you don't have to update it. When off, the number stays
+            until you change it.
+          </span>
+        </label>
+      )}
+    </Panel>
+  );
+}
+
 function AnnouncementPanel({ initial }: { initial: Announcement }) {
   const [v, setV] = useState(initial);
   const { save, saving, status } = useSaveSetting<Announcement>('announcement');
@@ -1129,6 +1199,7 @@ export function FrontPageAdmin() {
       <ChartPanel initial={config.chart} refs={refs} addRef={addRef} />
       <TickerPanel initial={config.ticker} refs={refs} addRef={addRef} />
       <AnnouncementPanel initial={config.announcement} />
+      <IssuePanel initial={config.issue} />
     </div>
   );
 }

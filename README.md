@@ -48,6 +48,7 @@ The two apps share no code. The backend is a plain JSON API that any client can 
   - the chart: pinned and excluded songs
   - the "New drops" ticker: your picks (songs, artists, shows, text with any link) followed by the latest releases (count, last N days, genre and city filters), plus speed and colour
   - a site-wide announcement banner
+  - the issue number: week of the year, or your own number that can count up by one every week
 
   Settings are validated JSON in the `SiteSetting` table, so new options don't need migrations.
 - **Artist ranking by clicks**:

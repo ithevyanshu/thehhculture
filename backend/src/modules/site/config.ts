@@ -207,12 +207,36 @@ export const chartSchema = z.object({
   excludedSongIds: z.array(id).max(200).default([]),
 });
 
+export const issueSchema = z.object({
+  /** auto = week of the year; manual = the number below */
+  mode: z.enum(['auto', 'manual']).default('auto'),
+  number: z.number().int().min(1).max(99_999).default(1),
+  /** Manual only: add one every week after the number was set. */
+  countUp: z.boolean().default(true),
+  /** When `number` was last changed (set by the server on save). */
+  since: isoDate,
+});
+
+/** Week of the year (1-53), the default issue number. */
+function weekOfYear(d: Date) {
+  const start = Date.UTC(d.getUTCFullYear(), 0, 1);
+  return Math.ceil(((d.getTime() - start) / 86_400_000 + new Date(start).getUTCDay() + 1) / 7);
+}
+
+/** The issue number printed across the site right now. */
+export function currentIssue(issue: SiteConfig['issue'], now = new Date()) {
+  if (issue.mode === 'auto') return weekOfYear(now);
+  if (!issue.countUp || !issue.since) return issue.number;
+  return issue.number + Math.max(0, Math.floor((now.getTime() - Date.parse(issue.since)) / (7 * 86_400_000)));
+}
+
 export const SCHEMAS = {
   coverStory: coverStorySchema,
   announcement: announcementSchema,
   ticker: tickerSchema,
   sections: sectionsSchema,
   chart: chartSchema,
+  issue: issueSchema,
 } as const;
 
 export type SettingKey = keyof typeof SCHEMAS;
@@ -238,6 +262,7 @@ function defaults(): SiteConfig {
     ticker: tickerSchema.parse({}),
     sections: normalizeSections({ items: [] }),
     chart: chartSchema.parse({}),
+    issue: issueSchema.parse({}),
   };
 }
 

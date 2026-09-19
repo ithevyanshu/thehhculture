@@ -67,6 +67,13 @@ siteAdminRouter.put('/site-config/:key', async (req, res) => {
   }
 
   if (k === 'sections') value = normalizeSections(value as SiteConfig['sections']) as SiteConfig[typeof k];
+  if (k === 'issue') {
+    // Weekly counting starts from when the number was set, so only a changed number resets it.
+    const issue = value as SiteConfig['issue'];
+    const prev = (await getSiteConfig()).issue;
+    const changed = issue.mode !== prev.mode || issue.number !== prev.number || !prev.since;
+    value = { ...issue, since: changed ? new Date().toISOString() : prev.since } as SiteConfig[typeof k];
+  }
   await saveSetting(k, value, currentUser(req).id);
   res.json({ key: k, value });
 });

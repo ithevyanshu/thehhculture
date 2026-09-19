@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { LogOut, Search, Settings, Shield, User as UserIcon, X } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
-import { useSite } from '../lib/queries';
+import { useIssueNumber, useSite } from '../lib/queries';
 import type { Tone } from '../lib/types';
-import { issueDate, issueNumber } from '../lib/format';
+import { issueDate } from '../lib/format';
 import { Artwork } from './Artwork';
 import { Wordmark } from './Wordmark';
 import { SmartLink } from './SmartLink';
@@ -259,6 +259,7 @@ function Ticker() {
 
 export function Layout() {
   const { user } = useAuth();
+  const issue = useIssueNumber();
   const location = useLocation();
 
   useEffect(() => {
@@ -335,7 +336,7 @@ export function Layout() {
             </div>
             <FooterSuggestLink />
             <p className="mono text-paper/60">
-              DHH/CULTURE · Issue #{issueNumber()} · {issueDate()} · Printed on the internet
+              DHH/CULTURE · Issue #{issue} · {issueDate()} · Printed on the internet
             </p>
           </div>
         </div>

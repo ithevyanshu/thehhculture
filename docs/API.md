@@ -116,7 +116,7 @@ Admin: `GET/POST /admin/shows`, `GET/PATCH/DELETE /admin/shows/:id`, `POST /admi
 |---|---|---|
 | GET | `/admin/stats` | `{ counts, newSuggestions, views: { week, allTime }, topArtists: { week[], allTime[] } }` |
 | GET | `/admin/site-config` | `{ config, builtins, refs }`: the whole front-page config plus names for every referenced song/artist |
-| PUT | `/admin/site-config/:key` | key ∈ `coverStory`, `sections`, `chart`, `ticker`, `announcement`; body = that setting (validated) |
+| PUT | `/admin/site-config/:key` | key ∈ `coverStory`, `sections`, `chart`, `ticker`, `announcement`, `issue`; body = that setting (validated) |
 | GET | `/admin/users` | `q, role, status=active\|disabled, page, limit` |
 | PATCH | `/admin/users/:id` | `{ role?: USER\|ADMIN, disabled? }`: signs the user out everywhere; can't target yourself or the last admin |
 | GET | `/admin/suggestions` | `status, type, q, page, limit` → items + `counts` per status |

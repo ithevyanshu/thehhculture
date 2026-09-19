@@ -1,9 +1,9 @@
 import { Router } from 'express';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
-import { getSiteConfig, type SiteConfig } from './config';
+import { currentIssue, getSiteConfig, type SiteConfig } from './config';
 
-/** Public site chrome: announcement banner + ticker. Cheap and cacheable by clients. */
+/** Public site chrome: announcement banner, ticker and issue number. Cheap and cacheable by clients. */
 export const siteRouter = Router();
 
 const tickerSongSelect = { id: true, slug: true, title: true, artist: { select: { name: true, slug: true } } } as const;
@@ -63,5 +63,5 @@ siteRouter.get('/', async (_req, res) => {
   }
 
   res.set('Cache-Control', 'public, max-age=30');
-  res.json({ announcement, ticker });
+  res.json({ announcement, ticker, issue: currentIssue(config.issue) });
 });

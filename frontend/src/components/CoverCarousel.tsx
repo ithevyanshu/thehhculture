@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, ExternalLink, Newspaper, Pause, Play } from 'lucide-react';
-import { issueNumber } from '../lib/format';
+import { useIssueNumber } from '../lib/queries';
 import { Artwork } from './Artwork';
 import { FollowButton } from './Buttons';
 import { FitTitle } from './ui';
@@ -11,6 +11,7 @@ import type { ArtistHero, Hero, NewsHero } from '../lib/types';
 const HERO_STICKER = { following: 'New from your artists', featured: 'Cover story', editorial: "Editor's pick" } as const;
 
 function CoverSlide({ hero, tilt }: { hero: ArtistHero; tilt: 'left' | 'right' }) {
+  const issue = useIssueNumber();
   const { artist, song, reason } = hero;
   const blurb = hero.blurb ?? artist.bio;
   return (
@@ -24,7 +25,7 @@ function CoverSlide({ hero, tilt }: { hero: ArtistHero; tilt: 'left' | 'right' }
       </div>
 
       <div className="min-w-0">
-        <p className="mono text-saffron-soft">Cover story · Issue #{issueNumber()}</p>
+        <p className="mono text-saffron-soft">Cover story · Issue #{issue}</p>
         <FitTitle text={artist.name} className="mt-2" />
         {blurb && <p className="mt-5 line-clamp-6 max-w-xl text-lg leading-relaxed">{blurb}</p>}
         {song && (
@@ -48,6 +49,7 @@ function CoverSlide({ hero, tilt }: { hero: ArtistHero; tilt: 'left' | 'right' }
 const slideTitle = (hero: Hero) => (hero.type === 'news' ? hero.headline : hero.artist.name);
 
 function NewsSlide({ hero, tilt }: { hero: NewsHero; tilt: 'left' | 'right' }) {
+  const issue = useIssueNumber();
   return (
     <div className={`grid items-center gap-10 ${hero.imageUrl ? 'md:grid-cols-[5fr_7fr]' : ''}`}>
       {hero.imageUrl && (
@@ -62,7 +64,7 @@ function NewsSlide({ hero, tilt }: { hero: NewsHero; tilt: 'left' | 'right' }) {
       <div className="min-w-0">
         <p className="mono flex items-center gap-2 text-saffron-soft">
           {!hero.imageUrl && <span className="sticker !bg-red !text-paper">{hero.kicker ?? 'News'}</span>}
-          <Newspaper size={14} /> The wire · Issue #{issueNumber()}
+          <Newspaper size={14} /> The wire · Issue #{issue}
         </p>
         <h2 className="display mt-3 text-5xl break-words md:text-7xl">{hero.headline}</h2>
         {hero.body && <p className="mt-5 line-clamp-6 max-w-2xl text-lg leading-relaxed whitespace-pre-line">{hero.body}</p>}

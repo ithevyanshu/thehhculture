@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom';
 import { Pin, Sparkles } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
-import { useHome } from '../lib/queries';
+import { useHome, useIssueNumber } from '../lib/queries';
 import { toQuery } from '../lib/api';
-import { issueDate, issueNumber } from '../lib/format';
+import { issueDate } from '../lib/format';
 import { ArtistTile, PlaylistTile, SongRow, SongTile, TrackList } from '../components/Cards';
 import { ShowTile } from '../components/ShowTile';
 import { CoverCarousel } from '../components/CoverCarousel';
@@ -176,6 +176,7 @@ function Sections({ sections }: { sections: HomeSection[] }) {
 
 export function HomePage() {
   const { user } = useAuth();
+  const issue = useIssueNumber();
   const { data, isLoading, error, refetch } = useHome();
 
   if (isLoading) return <Spinner label="Printing this week's issue" />;
@@ -185,7 +186,7 @@ export function HomePage() {
     <div>
       {/* Masthead */}
       <div className="mono mb-10 flex flex-wrap items-center justify-between gap-2 border-y-2 border-ink py-2">
-        <span>Issue #{issueNumber()}</span>
+        <span>Issue #{issue}</span>
         <span className="hidden sm:inline">The front page of Indian hip hop</span>
         <span>{data.personalized ? `For ${data.greetingName}` : issueDate()}</span>
       </div>
