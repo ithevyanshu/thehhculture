@@ -1,6 +1,15 @@
 import type { User } from './types';
 
-const BASE_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? '/api/v1';
+/**
+ * API base. Accepts "https://api.example.com", "https://api.example.com/" or the full
+ * "https://api.example.com/api/v1" and normalises all of them to ".../api/v1".
+ */
+function apiBase(raw: string | undefined) {
+  const url = (raw ?? '').trim().replace(/\/+$/, '');
+  if (!url) return '/api/v1';
+  return /\/api\/v1$/.test(url) ? url : `${url}/api/v1`;
+}
+const BASE_URL = apiBase(import.meta.env.VITE_API_URL as string | undefined);
 
 export class ApiError extends Error {
   constructor(
