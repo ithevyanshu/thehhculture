@@ -44,23 +44,40 @@ const optionalText = (max: number) =>
 
 // ---------- Schemas ----------
 
-export const coverStorySchema = z
-  .object({
-    /** auto = spotlight picked by the algorithm; manual = editor's pick; hidden = no cover story */
-    mode: z.enum(['auto', 'manual', 'hidden']).default('auto'),
-    artistId: id.nullish().transform((v) => v || null),
-    /** Song to promote; defaults to the artist's latest release. */
-    songId: id.nullish().transform((v) => v || null),
-    /** Sticker text, e.g. "Album of the week". */
-    kicker: optionalText(40),
-    /** Replaces the artist bio on the cover. */
-    blurb: optionalText(500),
-    startsAt: isoDate,
-    endsAt: isoDate,
-    /** When false, signed-in users who follow artists still get their personal cover story. */
-    forceForEveryone: z.boolean().default(false),
-  })
-  .refine((v) => v.mode !== 'manual' || !!v.artistId, { message: 'Pick an artist for the cover story', path: ['artistId'] });
+/** One editor-picked carousel slide. */
+export const coverSlideSchema = z.object({
+  artistId: id,
+  /** Song to promote; defaults to the artist's latest release. */
+  songId: id.nullish().transform((v) => v || null),
+  /** Sticker text, e.g. "Album of the week". */
+  kicker: optionalText(40),
+  /** Replaces the artist bio on the cover. */
+  blurb: optionalText(500),
+  startsAt: isoDate,
+  endsAt: isoDate,
+});
+
+export const coverStorySchema = z.preprocess(
+  // Older saves held a single pick at the top level; it becomes the first slide.
+  (raw) => {
+    if (!raw || typeof raw !== 'object' || 'slides' in raw) return raw;
+    const { artistId, songId, kicker, blurb, startsAt, endsAt, ...rest } = raw as Record<string, unknown>;
+    return { ...rest, slides: artistId ? [{ artistId, songId, kicker, blurb, startsAt, endsAt }] : [] };
+  },
+  z
+    .object({
+      /** auto = picked by the algorithm; manual = editor's slides (+ auto fill); hidden = no cover story */
+      mode: z.enum(['auto', 'manual', 'hidden']).default('auto'),
+      slides: z.array(coverSlideSchema).max(10).default([]),
+      /** Top the carousel up with automatic slides when fewer than 3 editor slides are live. */
+      autoFill: z.boolean().default(true),
+      /** Seconds per slide while autoplaying. */
+      intervalSeconds: z.number().int().min(3).max(30).default(7),
+      /** When false, signed-in users who follow artists see their personal slides first. */
+      forceForEveryone: z.boolean().default(false),
+    })
+    .refine((v) => v.mode !== 'manual' || v.slides.length > 0, { message: 'Add at least one slide', path: ['slides'] }),
+);
 
 export const announcementSchema = z
   .object({

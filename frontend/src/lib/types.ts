@@ -145,14 +145,21 @@ export interface HomeResponse {
   personalized: boolean;
   onboarded?: boolean;
   greetingName?: string;
-  hero: {
-    artist: ArtistCard & { bio: string | null; bannerUrl: string | null };
-    song: SongCard | null;
-    reason: 'following' | 'featured' | 'editorial';
-    kicker: string | null;
-    blurb: string | null;
-  } | null;
+  /** Cover-story carousel slides, in order. */
+  heroes: Hero[];
+  /** Seconds per slide while autoplaying. */
+  heroInterval: number;
+  /** First slide (older API field). */
+  hero: Hero | null;
   sections: HomeSection[];
+}
+
+export interface Hero {
+  artist: ArtistCard & { bio: string | null; bannerUrl: string | null };
+  song: SongCard | null;
+  reason: 'following' | 'featured' | 'editorial';
+  kicker: string | null;
+  blurb: string | null;
 }
 
 export interface PageMeta {

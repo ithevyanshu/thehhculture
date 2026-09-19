@@ -10,14 +10,19 @@ import type { Tone } from '../../lib/types';
 
 // ---------- Types mirroring backend/src/modules/site/config.ts ----------
 
-interface CoverStory {
-  mode: 'auto' | 'manual' | 'hidden';
-  artistId: string | null;
+interface CoverSlide {
+  artistId: string | null; // null only while the editor hasn't picked yet
   songId: string | null;
   kicker: string | null;
   blurb: string | null;
   startsAt: string | null;
   endsAt: string | null;
+}
+interface CoverStory {
+  mode: 'auto' | 'manual' | 'hidden';
+  slides: CoverSlide[];
+  autoFill: boolean;
+  intervalSeconds: number;
   forceForEveryone: boolean;
 }
 interface Announcement {
@@ -292,110 +297,202 @@ function IconBtn({ label, onClick, disabled, children }: { label: string; onClic
 
 // ---------- Panels ----------
 
+const MAX_SLIDES = 10;
+const EMPTY_SLIDE: CoverSlide = { artistId: null, songId: null, kicker: null, blurb: null, startsAt: null, endsAt: null };
+
+function CoverSlideEditor({
+  slide,
+  index,
+  total,
+  refs,
+  addRef,
+  onChange,
+  onMove,
+  onRemove,
+}: {
+  slide: CoverSlide;
+  index: number;
+  total: number;
+  refs: Refs;
+  addRef: (r: SongRef | ArtistRef) => void;
+  onChange: (s: CoverSlide) => void;
+  onMove: (dir: -1 | 1) => void;
+  onRemove: () => void;
+}) {
+  const artist = slide.artistId ? refs.artists[slide.artistId] : null;
+  const set = (patch: Partial<CoverSlide>) => onChange({ ...slide, ...patch });
+
+  return (
+    <li className="border-2 border-ink bg-surface p-4">
+      <div className="mb-3 flex items-center gap-2">
+        <span className="mono">Slide {String(index + 1).padStart(2, '0')}</span>
+        <span className="flex-1" />
+        <IconBtn label="Move up" onClick={() => onMove(-1)} disabled={index === 0}>
+          <ArrowUp size={14} />
+        </IconBtn>
+        <IconBtn label="Move down" onClick={() => onMove(1)} disabled={index === total - 1}>
+          <ArrowDown size={14} />
+        </IconBtn>
+        <IconBtn label="Remove slide" onClick={onRemove}>
+          <Trash2 size={14} />
+        </IconBtn>
+      </div>
+      <div className="grid gap-4 md:grid-cols-2">
+        <Field label="Artist *">
+          {artist ? (
+            <div className="flex items-center gap-3 border-2 border-ink bg-paper p-2">
+              <div className="size-10 border border-ink">
+                <Artwork src={artist.imageUrl} name={artist.name} seed={artist.slug} live />
+              </div>
+              <b className="flex-1 uppercase">{artist.name}</b>
+              <IconBtn label="Change artist" onClick={() => set({ artistId: null, songId: null })}>
+                <X size={14} />
+              </IconBtn>
+            </div>
+          ) : (
+            <Picker
+              kind="artist"
+              onPick={(r) => {
+                addRef(r);
+                set({ artistId: r.id, songId: null });
+              }}
+            />
+          )}
+        </Field>
+        <Field label="Song to promote" hint="Leave empty to use the artist's latest release">
+          {slide.songId ? (
+            <div className="flex items-center gap-2 border-2 border-ink bg-paper px-3 py-2 text-sm">
+              <span className="flex-1 truncate">
+                <RefLabel id={slide.songId} kind="song" refs={refs} />
+              </span>
+              <IconBtn label="Clear song" onClick={() => set({ songId: null })}>
+                <X size={14} />
+              </IconBtn>
+            </div>
+          ) : (
+            <Picker
+              kind="song"
+              artistSlug={artist?.slug}
+              placeholder={artist ? `Songs by ${artist.name}…` : 'Pick an artist first'}
+              onPick={(r) => {
+                addRef(r);
+                set({ songId: r.id });
+              }}
+            />
+          )}
+        </Field>
+        <Field label="Sticker text" hint={'e.g. "Legacy S1 winner". Default: "Editor\'s pick"'}>
+          <input className="input" maxLength={40} value={slide.kicker ?? ''} onChange={(e) => set({ kicker: e.target.value })} />
+        </Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Starts">
+            <input
+              type="datetime-local"
+              className="input"
+              value={toLocalInput(slide.startsAt)}
+              onChange={(e) => set({ startsAt: fromLocalInput(e.target.value) })}
+            />
+          </Field>
+          <Field label="Ends">
+            <input
+              type="datetime-local"
+              className="input"
+              value={toLocalInput(slide.endsAt)}
+              onChange={(e) => set({ endsAt: fromLocalInput(e.target.value) })}
+            />
+          </Field>
+        </div>
+      </div>
+      <div className="mt-4">
+        <Field label="Blurb" hint="Replaces the artist bio on the slide. Leave empty to use the bio.">
+          <textarea className="input min-h-20" maxLength={500} value={slide.blurb ?? ''} onChange={(e) => set({ blurb: e.target.value })} />
+        </Field>
+      </div>
+    </li>
+  );
+}
+
 function CoverStoryPanel({ initial, refs, addRef }: { initial: CoverStory; refs: Refs; addRef: (r: SongRef | ArtistRef) => void }) {
   const [v, setV] = useState(initial);
   const { save, saving, status } = useSaveSetting<CoverStory>('coverStory');
-  const artist = v.artistId ? refs.artists[v.artistId] : null;
+  const setSlide = (i: number, s: CoverSlide) => setV({ ...v, slides: v.slides.map((x, j) => (j === i ? s : x)) });
 
   return (
     <Panel
       title="Cover story"
-      description="The big feature at the top of the front page."
-      onSave={() => save(v)}
+      description="The carousel at the top of the front page."
+      // Slides still waiting for an artist are dropped rather than failing the save.
+      onSave={() => save({ ...v, slides: v.slides.filter((s) => s.artistId) })}
       saving={saving}
       status={status}
     >
       <Segmented
         value={v.mode}
-        onChange={(mode) => setV({ ...v, mode })}
+        onChange={(mode) => setV({ ...v, mode, slides: mode === 'manual' && !v.slides.length ? [EMPTY_SLIDE] : v.slides })}
         options={[
           { value: 'auto', label: 'Automatic' },
-          { value: 'manual', label: "Editor's pick" },
+          { value: 'manual', label: "Editor's picks" },
           { value: 'hidden', label: 'Hidden' },
         ]}
       />
       {v.mode === 'auto' && (
-        <p className="text-sm text-muted">Shows a featured artist's latest drop, or for signed-in users, the newest release from artists they follow.</p>
+        <p className="text-sm text-muted">
+          Three slides with the latest drops from featured artists, or for signed-in users, from artists they follow.
+        </p>
       )}
       {v.mode === 'manual' && (
         <>
-          <div className="grid gap-4 md:grid-cols-2">
-            <Field label="Artist *">
-              {artist ? (
-                <div className="flex items-center gap-3 border-2 border-ink bg-paper p-2">
-                  <div className="size-10 border border-ink">
-                    <Artwork src={artist.imageUrl} name={artist.name} seed={artist.slug} live />
-                  </div>
-                  <b className="flex-1 uppercase">{artist.name}</b>
-                  <IconBtn label="Change artist" onClick={() => setV({ ...v, artistId: null, songId: null })}>
-                    <X size={14} />
-                  </IconBtn>
-                </div>
-              ) : (
-                <Picker
-                  kind="artist"
-                  onPick={(r) => {
-                    addRef(r);
-                    setV({ ...v, artistId: r.id, songId: null });
-                  }}
-                />
-              )}
-            </Field>
-            <Field label="Song to promote" hint="Leave empty to use the artist's latest release">
-              {v.songId ? (
-                <div className="flex items-center gap-2 border-2 border-ink bg-paper px-3 py-2 text-sm">
-                  <span className="flex-1 truncate">
-                    <RefLabel id={v.songId} kind="song" refs={refs} />
-                  </span>
-                  <IconBtn label="Clear song" onClick={() => setV({ ...v, songId: null })}>
-                    <X size={14} />
-                  </IconBtn>
-                </div>
-              ) : (
-                <Picker
-                  kind="song"
-                  artistSlug={artist?.slug}
-                  placeholder={artist ? `Songs by ${artist.name}…` : 'Pick an artist first'}
-                  onPick={(r) => {
-                    addRef(r);
-                    setV({ ...v, songId: r.id });
-                  }}
-                />
-              )}
-            </Field>
-            <Field label="Sticker text" hint={'e.g. "Album of the week". Default: "Editor\'s pick"'}>
-              <input className="input" maxLength={40} value={v.kicker ?? ''} onChange={(e) => setV({ ...v, kicker: e.target.value })} />
-            </Field>
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Starts">
-                <input
-                  type="datetime-local"
-                  className="input"
-                  value={toLocalInput(v.startsAt)}
-                  onChange={(e) => setV({ ...v, startsAt: fromLocalInput(e.target.value) })}
-                />
-              </Field>
-              <Field label="Ends">
-                <input
-                  type="datetime-local"
-                  className="input"
-                  value={toLocalInput(v.endsAt)}
-                  onChange={(e) => setV({ ...v, endsAt: fromLocalInput(e.target.value) })}
-                />
-              </Field>
-            </div>
-          </div>
-          <Field label="Blurb" hint="Replaces the artist bio on the cover. Leave empty to use the bio.">
-            <textarea className="input min-h-20" maxLength={500} value={v.blurb ?? ''} onChange={(e) => setV({ ...v, blurb: e.target.value })} />
-          </Field>
+          <ol className="space-y-4">
+            {v.slides.map((s, i) => (
+              <CoverSlideEditor
+                key={i}
+                slide={s}
+                index={i}
+                total={v.slides.length}
+                refs={refs}
+                addRef={addRef}
+                onChange={(next) => setSlide(i, next)}
+                onMove={(dir) => setV({ ...v, slides: move(v.slides, i, dir) })}
+                onRemove={() => setV({ ...v, slides: v.slides.filter((_, j) => j !== i) })}
+              />
+            ))}
+          </ol>
+          <button
+            type="button"
+            className="btn-ghost"
+            disabled={v.slides.length >= MAX_SLIDES}
+            onClick={() => setV({ ...v, slides: [...v.slides, EMPTY_SLIDE] })}
+          >
+            <Plus size={14} /> Add slide
+          </button>
+          <label className="flex items-start gap-2 text-sm">
+            <input type="checkbox" className="mt-1" checked={v.autoFill} onChange={(e) => setV({ ...v, autoFill: e.target.checked })} />
+            <span>
+              <b>Fill up with automatic slides.</b> When fewer than 3 of your slides are live, the latest drops fill the rest.
+            </span>
+          </label>
           <label className="flex items-start gap-2 text-sm">
             <input type="checkbox" className="mt-1" checked={v.forceForEveryone} onChange={(e) => setV({ ...v, forceForEveryone: e.target.checked })} />
             <span>
-              <b>Show to everyone.</b> When off, signed-in users who follow artists keep their personal cover story, and everyone else sees this pick.
+              <b>Your picks lead for everyone.</b> When off, signed-in users who follow artists see new drops from those artists first.
             </span>
           </label>
-          <p className="text-xs text-dim">Outside the start/end window the cover story falls back to automatic.</p>
+          <p className="text-xs text-dim">Slides outside their start/end window are skipped.</p>
         </>
+      )}
+      {v.mode !== 'hidden' && (
+        <div className="max-w-xs">
+          <Field label="Seconds per slide" hint="Autoplay pauses on hover and for visitors who prefer reduced motion.">
+            <input
+              type="number"
+              className="input"
+              min={3}
+              max={30}
+              value={v.intervalSeconds}
+              onChange={(e) => setV({ ...v, intervalSeconds: Math.min(30, Math.max(3, Number(e.target.value) || 7)) })}
+            />
+          </Field>
+        </div>
       )}
     </Panel>
   );

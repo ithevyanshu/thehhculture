@@ -43,7 +43,7 @@ The two apps share no code. The backend is a plain JSON API that any client can 
   - Producers get "Prod. @handle" credits and a "Produced" section on their page.
   - The artist form has "+ Add a new city" for places that aren't listed yet.
 - **Front page control (Admin → Front page)**: changes go live on save. You can set:
-  - the cover story: an editor's pick with a sticker, blurb and schedule
+  - the cover story carousel: editor-picked slides (each with a sticker, blurb and schedule), topped up to 3 with the latest drops, autoplaying (pauses on hover, off for reduced motion)
   - the section layout: reorder, hide, rename, and add curated song/artist sections
   - the chart: pinned and excluded songs
   - the ticker: hand-picked songs or text

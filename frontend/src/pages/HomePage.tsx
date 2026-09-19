@@ -1,53 +1,16 @@
 import { Link } from 'react-router-dom';
-import { ArrowRight, Pin, Sparkles } from 'lucide-react';
+import { Pin, Sparkles } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { useHome } from '../lib/queries';
 import { toQuery } from '../lib/api';
 import { issueDate, issueNumber } from '../lib/format';
-import { Artwork } from '../components/Artwork';
 import { ArtistTile, PlaylistTile, SongRow, SongTile, TrackList } from '../components/Cards';
-import { FollowButton } from '../components/Buttons';
 import { ShowTile } from '../components/ShowTile';
-import { ErrorState, FitTitle, SPOT_COLORS, SectionHeader, SeeAll, Shelf, Spinner, spotText } from '../components/ui';
-import type { HomeResponse, HomeSection } from '../lib/types';
+import { CoverCarousel } from '../components/CoverCarousel';
+import { ErrorState, SPOT_COLORS, SectionHeader, SeeAll, Shelf, Spinner, spotText } from '../components/ui';
+import type { HomeSection } from '../lib/types';
 
 type Section<K extends HomeSection['kind']> = Extract<HomeSection, { kind: K }>;
-
-const HERO_STICKER = { following: 'New from your artists', featured: 'Cover story', editorial: "Editor's pick" } as const;
-
-function CoverStory({ hero }: { hero: NonNullable<HomeResponse['hero']> }) {
-  const { artist, song, reason } = hero;
-  const blurb = hero.blurb ?? artist.bio;
-  return (
-    <section className="mb-16 grid items-center gap-10 md:grid-cols-[5fr_7fr]">
-      <div className="relative mx-auto w-full max-w-sm md:max-w-none">
-        <div className="tape relative -rotate-2 border border-ink/10 bg-surface p-3 pb-10 shadow-hard">
-          <Artwork src={artist.imageUrl} name={artist.name} seed={artist.slug} />
-          <p className="marker absolute right-4 bottom-2 text-lg text-ink/70">{artist.region?.name ?? 'India'}</p>
-        </div>
-        <span className="sticker absolute -top-3 -right-2 z-10 rotate-6 !text-base">{hero.kicker ?? HERO_STICKER[reason]}</span>
-      </div>
-
-      <div className="min-w-0">
-        <p className="mono text-saffron-soft">Cover story · Issue #{issueNumber()}</p>
-        <FitTitle text={artist.name} className="mt-2" />
-        {blurb && <p className="mt-5 max-w-xl text-lg leading-relaxed">{blurb}</p>}
-        {song && (
-          <Link to={`/songs/${song.slug}`} className="group mt-6 inline-flex items-center gap-3">
-            <span className="marker text-xl text-saffron-soft">{reason === 'editorial' ? 'press play →' : 'latest drop →'}</span>
-            <span className="highlight text-xl font-bold uppercase">{song.title}</span>
-          </Link>
-        )}
-        <div className="mt-7 flex flex-wrap items-center gap-3">
-          <Link to={`/artists/${artist.slug}`} className="btn-primary">
-            Read the profile <ArrowRight size={14} />
-          </Link>
-          <FollowButton slug={artist.slug} isFollowing={artist.isFollowing} />
-        </div>
-      </div>
-    </section>
-  );
-}
 
 function seeAllLink(section: HomeSection) {
   if (!section.seeAll) return undefined;
@@ -240,7 +203,7 @@ export function HomePage() {
         </Link>
       )}
 
-      {data.hero && <CoverStory hero={data.hero} />}
+      <CoverCarousel heroes={data.heroes ?? (data.hero ? [data.hero] : [])} interval={data.heroInterval} />
 
       {!user && (
         <div className="mb-16 flex flex-col items-start justify-between gap-4 border-2 border-ink bg-ink p-6 text-paper shadow-hard-saffron md:flex-row md:items-center">

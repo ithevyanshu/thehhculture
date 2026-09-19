@@ -50,7 +50,10 @@ Refresh tokens rotate on every use. Re-using an old token (after a 30s grace win
   "personalized": true,
   "onboarded": true,
   "greetingName": "Demo Listener",
-  "hero": { "artist": {…}, "song": {…}, "reason": "following" | "featured" },
+  // Cover-story carousel, in order (max 8). "hero" = heroes[0], kept for older clients.
+  "heroes": [{ "artist": {…}, "song": {…}, "reason": "following" | "featured" | "editorial", "kicker": null, "blurb": null }],
+  "heroInterval": 7,
+  "hero": { … },
   "sections": [
     { "id": "following", "kind": "songs", "title": "New from artists you follow", "items": [ /* SongCard */ ] },
     { "id": "genre-boom-bap", "kind": "artists", "title": "Because you like Boom Bap", "seeAll": { "type": "artists", "params": { "genre": "boom-bap" } }, "items": [ … ] }

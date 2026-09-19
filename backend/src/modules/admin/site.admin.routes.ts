@@ -11,12 +11,12 @@ export const siteAdminRouter = Router();
 /** Every song/artist id referenced by the config, so the UI can show names instead of ids. */
 function referencedIds(config: SiteConfig) {
   const songIds = new Set<string>([
-    ...(config.coverStory.songId ? [config.coverStory.songId] : []),
+    ...config.coverStory.slides.flatMap((s) => (s.songId ? [s.songId] : [])),
     ...config.ticker.items.flatMap((i) => (i.type === 'song' ? [i.songId] : [])),
     ...config.chart.pinnedSongIds,
     ...config.chart.excludedSongIds,
   ]);
-  const artistIds = new Set<string>(config.coverStory.artistId ? [config.coverStory.artistId] : []);
+  const artistIds = new Set<string>(config.coverStory.slides.map((s) => s.artistId));
   for (const item of config.sections.items) {
     if (item.custom?.kind === 'songs') item.custom.ids.forEach((id) => songIds.add(id));
     if (item.custom?.kind === 'artists') item.custom.ids.forEach((id) => artistIds.add(id));

@@ -304,15 +304,32 @@ async function buildCustom(
 
 // ---------- Cover story ----------
 
-async function autoHero(userId: string | undefined, followedIds: string[]) {
-  // Prefer the freshest drop from someone the user follows, else a featured artist.
-  const song = await prisma.song.findFirst({
-    where: followedIds.length ? { artistId: { in: followedIds } } : { artist: { featured: true } },
-    orderBy: { releaseDate: { sort: 'desc', nulls: 'last' } },
-    select: { id: true, artistId: true },
-  });
-  if (!song) return null;
-  return heroFor(song.artistId, song.id, userId, followedIds.length ? 'following' : 'featured');
+/** Carousel size bounds: auto fill tops up to MIN, editor slides can go up to MAX. */
+const MIN_SLIDES = 3;
+const MAX_SLIDES = 8;
+
+type Hero = NonNullable<Awaited<ReturnType<typeof heroFor>>>;
+
+/** Latest drops, one per artist, from followed artists (or featured ones). */
+async function autoHeroes(userId: string | undefined, followedIds: string[], count: number, skipArtistIds: Set<string>) {
+  if (count <= 0) return [];
+  const pick = async (where: object, reason: 'following' | 'featured', n: number) => {
+    if (n <= 0) return [];
+    const rows = await prisma.song.findMany({
+      where: { ...where, artistId: { notIn: [...skipArtistIds] } },
+      orderBy: { releaseDate: { sort: 'desc', nulls: 'last' } },
+      distinct: ['artistId'],
+      take: n,
+      select: { id: true, artistId: true },
+    });
+    rows.forEach((r) => skipArtistIds.add(r.artistId));
+    return Promise.all(rows.map((r) => heroFor(r.artistId, r.id, userId, reason)));
+  };
+  const mine = followedIds.length ? await pick({ AND: [{ artistId: { in: followedIds } }] }, 'following', count) : [];
+  const featured = await pick({ artist: { featured: true } }, 'featured', count - mine.length);
+  // Not enough featured artists with songs: fall back to the newest drops overall.
+  const fresh = await pick({}, 'featured', count - mine.length - featured.length);
+  return [...mine, ...featured, ...fresh].filter((h): h is Hero => !!h);
 }
 
 async function heroFor(
@@ -339,19 +356,33 @@ async function heroFor(
   };
 }
 
-async function buildHero(config: SiteConfig['coverStory'], userId: string | undefined, ctx: UserContext | null) {
-  if (config.mode === 'hidden') return null;
+/**
+ * Cover-story carousel: live editor slides (in order) plus automatic slides up to
+ * MIN_SLIDES. Users who follow artists see their personal slides first unless the
+ * editor forces the picks to lead for everyone.
+ */
+async function buildHeroes(config: SiteConfig['coverStory'], userId: string | undefined, ctx: UserContext | null): Promise<Hero[]> {
+  if (config.mode === 'hidden') return [];
   const now = Date.now();
-  const inWindow =
-    (!config.startsAt || Date.parse(config.startsAt) <= now) && (!config.endsAt || Date.parse(config.endsAt) > now);
-  const editorial = config.mode === 'manual' && config.artistId && inWindow;
-  const personal = !!ctx?.followedIds.length && !config.forceForEveryone;
+  const live =
+    config.mode === 'manual'
+      ? config.slides.filter((s) => (!s.startsAt || Date.parse(s.startsAt) <= now) && (!s.endsAt || Date.parse(s.endsAt) > now))
+      : [];
+  // Missing artists (deleted since) drop out.
+  const editorial = (await Promise.all(live.map((s) => heroFor(s.artistId, s.songId, userId, 'editorial', s)))).filter(
+    (h): h is Hero => !!h,
+  );
 
-  if (editorial && !personal) {
-    const hero = await heroFor(config.artistId!, config.songId, userId, 'editorial', config);
-    if (hero) return hero; // artist may have been deleted -> fall back to auto
-  }
-  return autoHero(userId, ctx?.followedIds ?? []);
+  const followedIds = ctx?.followedIds ?? [];
+  const wantAuto = config.mode === 'auto' || config.autoFill;
+  const autoCount = wantAuto ? Math.max(0, MIN_SLIDES - editorial.length) : 0;
+  const auto = await autoHeroes(userId, followedIds, autoCount, new Set(editorial.map((h) => h.artist.id)));
+
+  const personalFirst = followedIds.length > 0 && !config.forceForEveryone;
+  const ordered = personalFirst
+    ? [...auto.filter((h) => h.reason === 'following'), ...editorial, ...auto.filter((h) => h.reason !== 'following')]
+    : [...editorial, ...auto];
+  return ordered.slice(0, MAX_SLIDES);
 }
 
 // ---------- Entry point ----------
@@ -361,8 +392,8 @@ export async function buildHome(userId?: string) {
   const effectiveUserId = ctx ? userId : undefined;
   const layout = config.sections.items.filter((item) => item.visible);
 
-  const [hero, built] = await Promise.all([
-    buildHero(config.coverStory, effectiveUserId, ctx),
+  const [heroes, built] = await Promise.all([
+    buildHeroes(config.coverStory, effectiveUserId, ctx),
     Promise.all(
       layout.map(async (item) => {
         if (item.custom) return buildCustom(item, effectiveUserId);
@@ -383,7 +414,12 @@ export async function buildHome(userId?: string) {
     personalized: !!ctx,
     onboarded: ctx?.onboarded,
     greetingName: ctx?.displayName,
-    hero,
+    /** Cover-story carousel slides, in order. */
+    heroes,
+    /** Seconds per slide when autoplaying. */
+    heroInterval: config.coverStory.intervalSeconds,
+    /** First slide, kept for older clients. */
+    hero: heroes[0] ?? null,
     sections: built.flat().filter((s) => s.items.length > 0),
   };
 }

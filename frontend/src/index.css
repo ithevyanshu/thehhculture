@@ -173,3 +173,13 @@
 .scrollbar-none::-webkit-scrollbar {
   display: none;
 }
+
+/* Cover-story carousel: the bar filling up is the autoplay timer (outside @theme so it isn't tree-shaken). */
+@keyframes cover-progress {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
