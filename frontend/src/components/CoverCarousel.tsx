@@ -143,7 +143,9 @@ export function CoverCarousel({ heroes, interval = 7 }: { heroes: Hero[]; interv
 
   return (
     <section
-      className="mb-16 touch-pan-y"
+      // Hidden slides wait 40px to the side for the slide-in: clip sideways (not vertically), with
+      // 16px of room so stickers and shadows stay visible, or phones get a horizontal scroll.
+      className="-mx-4 mb-16 touch-pan-y overflow-x-clip px-4"
       aria-roledescription="carousel"
       aria-label="Cover stories"
       onMouseEnter={() => setHovered(true)}

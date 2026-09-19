@@ -13,7 +13,8 @@ export function ShowTile({ show }: { show: ShowCard }) {
   return (
     <Link
       to={`/shows/${show.slug}`}
-      className="group flex h-full flex-col border-2 border-ink bg-ink text-paper shadow-hard transition hover:-translate-y-1 hover:shadow-hard-saffron"
+      // min-w-0: in a grid, a long lineup would otherwise widen the column past the screen.
+      className="group flex h-full min-w-0 flex-col border-2 border-ink bg-ink text-paper shadow-hard transition hover:-translate-y-1 hover:shadow-hard-saffron"
     >
       <div className="flex items-start justify-between gap-3 border-b-2 border-paper/20 p-4">
         <div className="min-w-0">
