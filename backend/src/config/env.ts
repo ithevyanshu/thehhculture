@@ -24,6 +24,9 @@ if (!parsed.success) {
 
 export const env = {
   ...parsed.data,
-  corsOrigins: parsed.data.CORS_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean),
+  // Tolerate quotes, spaces and trailing slashes: browsers send e.g. "https://dhhculture.in".
+  corsOrigins: parsed.data.CORS_ORIGINS.split(',')
+    .map((o) => o.trim().replace(/^["']|["']$/g, '').replace(/\/+$/, '').toLowerCase())
+    .filter(Boolean),
   isProd: parsed.data.NODE_ENV === 'production',
 };

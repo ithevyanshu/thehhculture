@@ -6,6 +6,7 @@ const app = createApp();
 
 const server = app.listen(env.PORT, () => {
   console.log(`DHH API listening on http://localhost:${env.PORT}/api/v1`);
+  console.log(`CORS allowed origins: ${env.corsOrigins.join(', ') || '(none)'}`);
 });
 
 async function shutdown(signal: string) {
