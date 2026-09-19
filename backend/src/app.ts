@@ -32,7 +32,8 @@ export function createApp() {
   app.use(cookieParser());
   if (env.NODE_ENV !== 'test') app.use(morgan(env.isProd ? 'combined' : 'dev'));
 
-  app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+  // Allowed origins are public anyway (sent in CORS headers); listing them makes deploy issues easy to spot.
+  app.get('/health', (_req, res) => res.json({ status: 'ok', env: env.NODE_ENV, corsOrigins: env.corsOrigins }));
 
   const api = express.Router();
   api.use('/auth', authRouter);
