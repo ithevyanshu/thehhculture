@@ -137,7 +137,7 @@ Sub-admins pass only for routes their `permissions` open (`artists`, `albums`, `
 |---|---|---|
 | GET | `/admin/stats` | `{ counts, newSuggestions, views: { week, allTime }, topArtists: { week[], allTime[] } }` |
 | GET | `/admin/site-config` | `{ config, builtins, refs }`: the whole front-page config plus names for every referenced song/artist |
-| PUT | `/admin/site-config/:key` | key ∈ `coverStory`, `sections`, `chart`, `ticker`, `announcement`, `issue`; body = that setting (validated) |
+| PUT | `/admin/site-config/:key` | key ∈ `coverStory`, `sections`, `chart`, `ticker`, `announcement`, `issue`; body = that setting (validated). `chart` takes `{ title?, subtitle?, size, pinnedSongIds[], excludedSongIds[], artistIds[], sort: likes|new|random, maxPerArtist }` |
 | GET | `/admin/users` | `q, role, status=active\|disabled, page, limit` |
 | PATCH | `/admin/users/:id` | `{ role?: USER\|SUB_ADMIN\|ADMIN, permissions?: string[], disabled? }`: role/disable sign the user out everywhere; can't target yourself or the last admin. Role and permissions are full-admin only; sub-admins may only act on regular users |
 | POST | `/admin/users/:id/reset-password` | → `{ temporaryPassword }` (shown once); signs the user out and sets `mustChangePassword`. Not for your own account |

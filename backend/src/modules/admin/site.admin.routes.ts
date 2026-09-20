@@ -20,6 +20,7 @@ function referencedIds(config: SiteConfig) {
   const artistIds = new Set<string>([
     ...slides.flatMap((s) => (s.type === 'artist' ? [s.artistId] : s.artistIds)),
     ...config.ticker.items.flatMap((i) => (i.type === 'artist' ? [i.artistId] : [])),
+    ...config.chart.artistIds,
   ]);
   const showIds = new Set<string>(config.ticker.items.flatMap((i) => (i.type === 'show' ? [i.showId] : [])));
   for (const item of config.sections.items) {

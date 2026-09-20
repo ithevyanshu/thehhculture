@@ -45,7 +45,7 @@ The two apps share no code. The backend is a plain JSON API that any client can 
 - **Front page control (Admin → Front page)**: changes go live on save. You can set:
   - the cover story carousel: artist features or news stories (headline, story, image link, "read more" link, tagged artists), each with a sticker and schedule, topped up to 3 with the latest drops, autoplaying (pauses on hover, off for reduced motion)
   - the section layout: reorder, hide, rename, and add curated song/artist sections
-  - the chart: pinned and excluded songs
+  - the chart: pinned and excluded songs, plus which artists are eligible, the order (most liked / newest / shuffle) and a cap per artist so one name can not fill it
   - the "New drops" ticker: your picks (songs, artists, shows, text with any link) followed by the latest releases (count, last N days, genre and city filters), plus speed and colour
   - a site-wide announcement banner
   - the issue number: week of the year, or your own number that can count up by one every week

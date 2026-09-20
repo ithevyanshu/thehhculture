@@ -69,9 +69,14 @@ interface SectionItem {
 }
 interface Chart {
   title: string | null;
+  subtitle: string | null;
   size: number;
   pinnedSongIds: string[];
   excludedSongIds: string[];
+  /** Empty = the whole catalog. */
+  artistIds: string[];
+  sort: 'likes' | 'new' | 'random';
+  maxPerArtist: number;
 }
 interface SongRef {
   id: string;
@@ -150,7 +155,49 @@ function useSaveSetting<T>(key: string) {
 
 // ---------- building blocks ----------
 
+/** The panels, in page order, for the jump navigation at the top. */
+const PANELS = [
+  { id: 'cover-story', label: 'Cover story' },
+  { id: 'layout', label: 'Layout' },
+  { id: 'chart', label: 'The Chart' },
+  { id: 'ticker', label: 'Ticker' },
+  { id: 'announcement', label: 'Announcement' },
+  { id: 'issue', label: 'Issue number' },
+] as const;
+
+/** Chips that jump to a panel and highlight whichever one you're looking at. */
+function PanelNav() {
+  const [active, setActive] = useState<string>(PANELS[0].id);
+  useEffect(() => {
+    const seen = new Map<string, number>();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) seen.set(e.target.id, e.intersectionRatio);
+        const best = [...seen.entries()].sort((a, b) => b[1] - a[1])[0];
+        if (best?.[1]) setActive(best[0]);
+      },
+      { rootMargin: '-80px 0px -60% 0px', threshold: [0, 0.25, 0.5, 1] },
+    );
+    for (const p of PANELS) {
+      const el = document.getElementById(p.id);
+      if (el) observer.observe(el);
+    }
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <nav aria-label="Front page settings" className="scrollbar-none sticky top-16 z-20 -mx-4 mb-8 flex gap-2 overflow-x-auto bg-paper/95 px-4 py-2 backdrop-blur-sm">
+      {PANELS.map((p) => (
+        <a key={p.id} href={`#${p.id}`} aria-current={active === p.id} className={`chip shrink-0 ${active === p.id ? 'chip-active' : ''}`}>
+          {p.label}
+        </a>
+      ))}
+    </nav>
+  );
+}
+
 function Panel({
+  id,
   title,
   description,
   children,
@@ -158,6 +205,7 @@ function Panel({
   saving,
   status,
 }: {
+  id: string;
   title: string;
   description: string;
   children: ReactNode;
@@ -166,7 +214,7 @@ function Panel({
   status: { ok: boolean; msg: string } | null;
 }) {
   return (
-    <section className="mb-10 border-2 border-ink bg-surface shadow-hard">
+    <section id={id} className="mb-10 scroll-mt-28 border-2 border-ink bg-surface shadow-hard">
       <header className="border-b-2 border-ink bg-paper px-5 py-3">
         <h2 className="display text-3xl">{title}</h2>
         <p className="text-sm text-muted">{description}</p>
@@ -568,6 +616,7 @@ function CoverStoryPanel({ initial, refs, addRef }: { initial: CoverStory; refs:
 
   return (
     <Panel
+      id="cover-story"
       title="Cover story"
       description="The carousel at the top of the front page."
       // Slides still waiting for an artist are dropped rather than failing the save.
@@ -673,6 +722,7 @@ function IssuePanel({ initial }: { initial: Issue }) {
 
   return (
     <Panel
+      id="issue"
       title="Issue number"
       description='The "Issue #" printed on the front page masthead, cover stories and footer.'
       onSave={() => save(v)}
@@ -724,7 +774,7 @@ function AnnouncementPanel({ initial }: { initial: Announcement }) {
   const tone = TONE_OPTIONS.find((t) => t.value === v.tone)!;
 
   return (
-    <Panel title="Announcement banner" description="A strip above the header on every page, for tours, releases or notices." onSave={() => save(v)} saving={saving} status={status}>
+    <Panel id="announcement" title="Announcement banner" description="A strip above the header on every page, for tours, releases or notices." onSave={() => save(v)} saving={saving} status={status}>
       <label className="flex items-center gap-2 font-semibold">
         <input type="checkbox" checked={v.enabled} onChange={(e) => setV({ ...v, enabled: e.target.checked })} /> Banner is live
       </label>
@@ -804,7 +854,7 @@ function TickerPanel({ initial, refs, addRef }: { initial: Ticker; refs: Refs; a
   };
 
   return (
-    <Panel title="Ticker (New drops)" description="The scrolling strip under the header." onSave={() => save(v)} saving={saving} status={status}>
+    <Panel id="ticker" title="Ticker (New drops)" description="The scrolling strip under the header." onSave={() => save(v)} saving={saving} status={status}>
       <div className="flex flex-wrap items-end gap-4">
         <Segmented
           value={v.mode}
@@ -1000,6 +1050,7 @@ function SectionsPanel({
 
   return (
     <Panel
+      id="layout"
       title="Front page layout"
       description="Order, show/hide and rename blocks, or add your own curated ones. The cover story always comes first."
       onSave={() => save({ items })}
@@ -1112,8 +1163,9 @@ function ChartPanel({ initial, refs, addRef }: { initial: Chart; refs: Refs; add
 
   return (
     <Panel
+      id="chart"
       title="The Chart"
-      description="Ranked by likes. Pinned songs always sit at the top in your order; excluded songs never appear."
+      description="Pinned songs always sit at the top in your order; excluded songs never appear."
       onSave={() => save(v)}
       saving={saving}
       status={status}
@@ -1132,7 +1184,50 @@ function ChartPanel({ initial, refs, addRef }: { initial: Chart; refs: Refs; add
             onChange={(e) => setV({ ...v, size: Math.min(25, Math.max(5, Number(e.target.value) || 10)) })}
           />
         </Field>
+        <Field label="Subtitle" hint="Default depends on the order below">
+          <input className="input" maxLength={80} value={v.subtitle ?? ''} onChange={(e) => setV({ ...v, subtitle: e.target.value })} />
+        </Field>
+        <Field label="Max per artist" hint="0 = no limit. Stops one prolific artist filling the chart.">
+          <input
+            type="number"
+            min={0}
+            max={10}
+            className="input"
+            value={v.maxPerArtist}
+            onChange={(e) => setV({ ...v, maxPerArtist: Math.min(10, Math.max(0, Number(e.target.value) || 0)) })}
+          />
+        </Field>
+        <Field label="Order" hint="Likes needs a busy site; newest or shuffle work better early on">
+          <Segmented
+            value={v.sort}
+            onChange={(sort) => setV({ ...v, sort })}
+            options={[
+              { value: 'likes', label: 'Most liked' },
+              { value: 'new', label: 'Newest' },
+              { value: 'random', label: 'Shuffle' },
+            ]}
+          />
+        </Field>
       </div>
+
+      <Field
+        label="Only these artists"
+        hint={v.artistIds.length ? 'The chart uses their songs (including tracks they feature on). Leave empty for the whole catalog.' : 'Empty: every artist is eligible.'}
+      >
+        <IdList ids={v.artistIds} kind="artist" refs={refs} onChange={(artistIds) => setV({ ...v, artistIds })} />
+        {v.artistIds.length < 30 && (
+          <div className="mt-2 max-w-sm">
+            <Picker
+              kind="artist"
+              placeholder="Add an artist…"
+              onPick={(r) => {
+                addRef(r);
+                if (!v.artistIds.includes(r.id)) setV({ ...v, artistIds: [...v.artistIds, r.id] });
+              }}
+            />
+          </div>
+        )}
+      </Field>
       <div className="grid gap-6 md:grid-cols-2">
         <div className="space-y-2">
           <span className="label">Pinned to the top (max 10)</span>
@@ -1194,6 +1289,7 @@ export function FrontPageAdmin() {
       <p className="mb-8 max-w-2xl text-muted">
         Changes go live as soon as you save. Signed-in visitors see personal sections mixed into the layout below; anonymous visitors see only the "everyone" blocks.
       </p>
+      <PanelNav />
       <CoverStoryPanel initial={config.coverStory} refs={refs} addRef={addRef} />
       <SectionsPanel initial={config.sections.items} builtins={data.builtins} refs={refs} addRef={addRef} />
       <ChartPanel initial={config.chart} refs={refs} addRef={addRef} />

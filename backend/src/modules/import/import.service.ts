@@ -85,8 +85,18 @@ export async function preview(artistId: string, itunesId: string) {
   if (!artist) throw notFound('Artist');
 
   const mine = new Map(artist.songs.map((s) => [titleKey(s.title), s.title]));
-  const byItunesId = new Set(artist.songs.flatMap((s) => (s.itunesTrackId ? [s.itunesTrackId] : [])));
   const tracks = await artistTracks(itunesId);
+
+  // A track can already be here under a collaborator ("Seedhe Maut & KR$NA" lands under
+  // Seedhe Maut). Importing it again would break the unique iTunes id, so skip it.
+  const existingById = new Map(
+    (
+      await prisma.song.findMany({
+        where: { itunesTrackId: { in: tracks.map((t) => String(t.trackId)) } },
+        select: { itunesTrackId: true, title: true, artist: { select: { name: true } } },
+      })
+    ).map((s) => [s.itunesTrackId!, s]),
+  );
 
   const seen = new Set<string>();
   const items: PreviewTrack[] = [];
@@ -94,7 +104,8 @@ export async function preview(artistId: string, itunesId: string) {
     const key = titleKey(t.trackName);
     if (seen.has(key)) continue; // iTunes lists the same song on album + single
     seen.add(key);
-    const existing = mine.get(key);
+    const elsewhere = existingById.get(String(t.trackId));
+    const existing = mine.get(key) ?? (elsewhere ? `${elsewhere.title} (under ${elsewhere.artist.name})` : undefined);
     // iTunes lists tracks the artist is only featured on. Their own songs are the ones
     // they lead: "SAMBATA & Karan Kanchan" counts, "Phenom & SAMBATA" doesn't.
     const lead = t.artistName.split(/,| & | feat\.? | ft\.? | with | x /i)[0];
@@ -113,7 +124,7 @@ export async function preview(artistId: string, itunesId: string) {
       genre: t.primaryGenreName ?? null,
       coverUrl: artwork(t.artworkUrl100),
       previewUrl: t.trackViewUrl ?? null,
-      skip: existing || byItunesId.has(String(t.trackId))
+      skip: existing
         ? 'already-here'
         : !theirOwn
           ? 'other-artist'

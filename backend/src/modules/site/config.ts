@@ -201,11 +201,18 @@ export const sectionsSchema = z
 
 export const chartSchema = z.object({
   title: optionalText(60),
+  subtitle: optionalText(80),
   size: z.number().int().min(5).max(25).default(10),
   /** Always shown first, in this order. */
   pinnedSongIds: z.array(id).max(10).default([]),
   /** Never shown in the chart. */
   excludedSongIds: z.array(id).max(200).default([]),
+  /** Empty = the whole catalog; otherwise only these artists' songs. */
+  artistIds: z.array(id).max(30).default([]),
+  /** How the rest of the chart is ordered under the pinned songs. */
+  sort: z.enum(['likes', 'new', 'random']).default('likes'),
+  /** Stops one prolific artist filling the chart. 0 = no limit. */
+  maxPerArtist: z.number().int().min(0).max(10).default(0),
 });
 
 /** Artist Studio: which kinds of artist changes go live without an admin approving them. */

@@ -77,17 +77,47 @@ const songs = (userId: string | undefined, args: Parameters<typeof prisma.song.f
 const artists = (userId: string | undefined, args: Parameters<typeof prisma.artist.findMany>[0]) =>
   prisma.artist.findMany({ ...args, select: artistCardSelect }).then((a) => withFollowFlags(userId, a));
 
-/** Chart = pinned songs (in order) + most-liked songs, minus exclusions. */
+/** Chart = pinned songs (in order) + the rest, minus exclusions, optionally from chosen artists only. */
 export async function buildChart(config: SiteConfig['chart'], userId?: string) {
-  const { pinnedSongIds, excludedSongIds, size } = config;
+  const { pinnedSongIds, excludedSongIds, artistIds, sort, size, maxPerArtist } = config;
   const pinnedRows = pinnedSongIds.length ? await songs(userId, { where: { id: { in: pinnedSongIds } } }) : [];
   const pinned = pinnedSongIds.flatMap((id) => pinnedRows.filter((s) => s.id === id)).map((s) => ({ ...s, pinned: true }));
-  const rest = await songs(userId, {
-    where: { id: { notIn: [...pinnedSongIds, ...excludedSongIds] } },
-    orderBy: [{ likes: { _count: 'desc' } }, { releaseDate: { sort: 'desc', nulls: 'last' } }],
-    take: Math.max(0, size - pinned.length),
-  });
-  return [...pinned, ...rest.map((s) => ({ ...s, pinned: false }))];
+
+  const where = {
+    id: { notIn: [...pinnedSongIds, ...excludedSongIds] },
+    ...(artistIds.length && { OR: [{ artistId: { in: artistIds } }, { features: { some: { artistId: { in: artistIds } } } }] }),
+  };
+  const take = Math.max(0, size - pinned.length);
+  const orderBy =
+    sort === 'new'
+      ? [{ releaseDate: { sort: 'desc' as const, nulls: 'last' as const } }]
+      : [{ likes: { _count: 'desc' as const } }, { releaseDate: { sort: 'desc' as const, nulls: 'last' as const } }];
+
+  /** Keeps at most `maxPerArtist` songs each, so one prolific artist can't fill the chart. */
+  const spread = <T extends { artist: { id: string } }>(list: T[]) => {
+    if (!maxPerArtist) return list.slice(0, take);
+    const count = new Map<string, number>();
+    const kept: T[] = [];
+    for (const song of list) {
+      const n = count.get(song.artist.id) ?? 0;
+      if (n >= maxPerArtist) continue;
+      count.set(song.artist.id, n + 1);
+      kept.push(song);
+      if (kept.length === take) break;
+    }
+    return kept;
+  };
+  // Over-fetch so there's enough left after the per-artist cap.
+  const poolSize = Math.max(take * (maxPerArtist ? 8 : 1), take);
+
+  // "random" keeps the chart fresh while there are few likes: pick from a recent pool.
+  if (sort === 'random') {
+    const pool = await songs(userId, { where, orderBy: [{ releaseDate: { sort: 'desc', nulls: 'last' } }], take: Math.max(take * 8, 60) });
+    return [...pinned, ...spread(pool.sort(() => Math.random() - 0.5)).map((s) => ({ ...s, pinned: false }))];
+  }
+
+  const rest = await songs(userId, { where, orderBy, take: poolSize });
+  return [...pinned, ...spread(rest).map((s) => ({ ...s, pinned: false }))];
 }
 
 const BUILDERS: Record<string, Builder> = {
@@ -96,8 +126,8 @@ const BUILDERS: Record<string, Builder> = {
       id: 'chart',
       kind: 'chart',
       title: config.chart.title ?? 'The Chart',
-      subtitle: 'Most liked right now',
-      seeAll: { type: 'songs', params: { sort: 'popular' } },
+      subtitle: config.chart.subtitle ?? (config.chart.sort === 'new' ? 'Freshest drops' : config.chart.sort === 'random' ? 'A different cut every visit' : 'Most liked right now'),
+      seeAll: { type: 'songs', params: { sort: config.chart.sort === 'new' ? 'new' : 'popular' } },
       items: await buildChart(config.chart, userId),
     },
   ],
