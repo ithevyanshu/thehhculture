@@ -40,7 +40,7 @@ git push -u origin main
 
    | Name | Value |
    |---|---|
-   | `DATABASE_URL` | Neon **pooled** URL, e.g. `postgresql://neondb_owner:NEWPASS@ep-…-pooler.c-6.us-east-2.aws.neon.tech/neondb?sslmode=require` |
+   | `DATABASE_URL` | Neon **unpooled** URL (no `-pooler` in the host), the same value as `DIRECT_URL`. See the note below. |
    | `DIRECT_URL` | Same URL **without** `-pooler` in the host |
    | `NODE_ENV` | `production` |
    | `JWT_ACCESS_SECRET` | the secret from step 0 |
@@ -50,6 +50,8 @@ git push -u origin main
    | `REFRESH_TOKEN_TTL_DAYS` | `30` |
 
    (Don't add `pgbouncer=true` or `channel_binding=require` to the URLs. `PORT` is set by Railway automatically.)
+
+   **Why unpooled:** Neon's pooled endpoint shares Postgres sessions between clients, and those sessions cache query plans. After a migration that changes a column's type, queries touching that column fail with `cached plan must not change result type` until the sessions recycle — retries and restarts don't help, because the pooler hands back the same sessions. The unpooled endpoint has none of that, and one long-lived backend uses only a handful of connections. If you ever do switch back to the pooled URL and see that error, restart the Neon compute to clear every session at once.
 4. Deploy. Test the generated URL: `https://<something>.up.railway.app/health` should return `{"status":"ok"}`.
 5. **Settings → Networking → Custom Domain** → enter `api.dhhculture.in`. Railway shows a **CNAME** target (and sometimes a **TXT** verification record). Keep this tab open for step 4.
 

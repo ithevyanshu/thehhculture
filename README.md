@@ -63,6 +63,12 @@ The two apps share no code. The backend is a plain JSON API that any client can 
   - **Sub-admins** only get the admin sections an admin ticks for them (front page, artists, albums, songs, shows, genres & cities, suggestions, users). Access is checked on every request, so changes apply immediately.
   - A sub-admin with "users" access can only disable or reset regular users; admins and sub-admins are managed by full admins.
   - **Password reset** generates a temporary password (shown once) and signs the user out; they must choose a new one at their next sign-in. Everyone can change their password in Settings.
+- **Import releases (Admin → Import)**:
+  - Pulls an artist's songs and albums from the free iTunes Search API (no key, no account, works from India).
+  - You pick which iTunes artist is the right one, then tick what to add. Songs already in the catalog are matched by title and left alone; karaoke and sped-up versions are filtered out.
+  - Fills title, album (created when missing), release date, cover art, duration, explicit flag and track number.
+  - Every run is recorded, and **Undo** deletes exactly the rows that run created — never anything you added or edited by hand.
+  - `npm run coverage:catalog` reports how much iTunes has for your artists before you start.
 - **Artist Studio (`/studio`)**:
   - An admin links one account to one artist profile (Admin → Studio). The account gets the `ARTIST` role and a Studio link.
   - Artists edit their profile (bio, photo, links, city, genres, @handle), add, edit and remove their own songs and releases, and post short updates. Verified, featured, slugs and Spotify IDs stay admin-only.
@@ -85,7 +91,7 @@ cp .env.example .env
 
 Edit `backend/.env`:
 
-- `DATABASE_URL`: your pooled connection string. For Neon don't add `pgbouncer=true`: its pooler supports prepared statements, and the flag makes every query ~5x slower. Drop `channel_binding=require` (Prisma doesn't need it).
+- `DATABASE_URL`: Neon's **unpooled** connection string (no `-pooler` in the host), the same value as `DIRECT_URL`. Neon's pooled endpoint keeps prepared statements alive across sessions, so after a migration that changes a column's type it answers `cached plan must not change result type` until those sessions recycle. `pgbouncer=true` avoids that but makes every query ~5x slower. Drop `channel_binding=require` (Prisma doesn't need it).
 - `DIRECT_URL`: the direct (non-pooled) connection string, used for migrations. If you only have one URL, use it for both.
 - `JWT_ACCESS_SECRET`: a long random string: `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`
 - `ADMIN_EMAIL` / `ADMIN_PASSWORD`: your admin login, created by the seed

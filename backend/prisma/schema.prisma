@@ -62,6 +62,8 @@ model User {
   managedArtist   Artist?        @relation("ArtistManager")
   artistChanges   ArtistChange[] @relation("ChangeAuthor")
   reviewedChanges ArtistChange[] @relation("ChangeReviewer")
+  imports         ImportBatch[]  @relation("ImportAuthor")
+  undoneImports   ImportBatch[]  @relation("ImportUndoer")
   suggestions     Suggestion[]
 }
 
@@ -183,6 +185,8 @@ model Artist {
   youtubeUrl   String?
   spotifyUrl   String?
   spotifyId    String?  @unique
+  /// iTunes artist id, remembered so a re-import matches the same artist.
+  itunesId     String?  @unique
   /// The one account that runs this profile in the Studio (linked by an admin).
   managedById  String?  @unique
   managedBy    User?    @relation("ArtistManager", fields: [managedById], references: [id], onDelete: SetNull)
@@ -199,6 +203,7 @@ model Artist {
   produced    SongProducer[]
   showRoles   ShowAppearance[]
   changes     ArtistChange[]
+  imports     ImportBatch[]
   posts       ArtistPost[]
 
   @@index([regionId])
@@ -247,6 +252,8 @@ model Song {
   coverUrl       String?
   explicit       Boolean   @default(false)
   spotifyTrackId String?   @unique
+  /// iTunes track id: lets an import skip songs it already added.
+  itunesTrackId  String?   @unique
   youtubeVideoId String?
   lyricsUrl      String?
   createdAt      DateTime  @default(now())
@@ -457,5 +464,32 @@ model ArtistPost {
   createdAt DateTime @default(now())
 
   @@index([artistId, createdAt])
+  @@index([createdAt])
+}
+
+// ---------- Catalog imports ----------
+
+enum ImportSource {
+  ITUNES
+}
+
+/// One "import releases" run: exactly what it created, so it can be undone in one click.
+model ImportBatch {
+  id          String       @id @default(cuid())
+  source      ImportSource @default(ITUNES)
+  artistId    String?
+  artist      Artist?      @relation(fields: [artistId], references: [id], onDelete: SetNull)
+  /// Kept for the log even if the artist is deleted later.
+  artistName  String
+  createdById String?
+  createdBy   User?        @relation("ImportAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+  /// Rows this run created; undo deletes these and nothing else.
+  albumIds    String[]
+  songIds     String[]
+  createdAt   DateTime     @default(now())
+  undoneAt    DateTime?
+  undoneById  String?
+  undoneBy    User?        @relation("ImportUndoer", fields: [undoneById], references: [id], onDelete: SetNull)
+
   @@index([createdAt])
 }

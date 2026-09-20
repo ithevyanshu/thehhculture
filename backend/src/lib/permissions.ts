@@ -27,6 +27,8 @@ const RULES: Rule[] = [
   { path: /^\/suggestions(\/|$)/, allow: ['suggestions'] },
   { path: /^\/users(\/|$)/, allow: ['users'] },
   { path: /^\/studio(\/|$)/, allow: ['studio'] },
+  // Importing creates songs and their albums, so either section opens it.
+  { path: /^\/import(\/|$)/, allow: ['songs', 'albums'] },
 ];
 
 /** Can a sub-admin with these permissions call `method path` (path relative to /admin)? */

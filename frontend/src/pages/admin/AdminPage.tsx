@@ -12,6 +12,7 @@ import { AlbumForm, ArtistForm, Drawer, SongForm } from './CatalogForms';
 import { InstagramGlyph, instagramHandle } from '../../components/Instagram';
 import { UsersAdmin } from './UsersAdmin';
 import { StudioAdmin } from './StudioAdmin';
+import { ImportAdmin } from './ImportAdmin';
 import { SuggestionsAdmin } from './SuggestionsAdmin';
 import { ShowsAdmin } from './ShowsAdmin';
 import { useDialog } from '../../components/Dialog';
@@ -19,7 +20,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
 import { can, type Permission } from '../../lib/permissions';
 
-type Tab = 'Overview' | 'Front page' | 'Artists' | 'Albums' | 'Songs' | 'Shows' | 'Taxonomy' | 'Studio' | 'Suggestions' | 'Users';
+type Tab = 'Overview' | 'Front page' | 'Artists' | 'Albums' | 'Songs' | 'Import' | 'Shows' | 'Taxonomy' | 'Studio' | 'Suggestions' | 'Users';
 
 /** Permission each tab needs (Overview is open to all staff). */
 const TAB_PERMISSION: Record<Exclude<Tab, 'Overview'>, Permission> = {
@@ -27,6 +28,7 @@ const TAB_PERMISSION: Record<Exclude<Tab, 'Overview'>, Permission> = {
   Artists: 'artists',
   Albums: 'albums',
   Songs: 'songs',
+  Import: 'songs',
   Shows: 'shows',
   Taxonomy: 'taxonomy',
   Studio: 'studio',
@@ -399,7 +401,7 @@ export function AdminPage() {
   };
 
   const { user } = useAuth();
-  const allTabs: Tab[] = ['Overview', 'Front page', 'Artists', 'Albums', 'Songs', 'Shows', 'Taxonomy', 'Studio', 'Suggestions', 'Users'];
+  const allTabs: Tab[] = ['Overview', 'Front page', 'Artists', 'Albums', 'Songs', 'Import', 'Shows', 'Taxonomy', 'Studio', 'Suggestions', 'Users'];
   const tabs = allTabs.filter((t) => t === 'Overview' || can(user, TAB_PERMISSION[t]));
 
   return (
@@ -424,6 +426,7 @@ export function AdminPage() {
       {tab === 'Front page' && <FrontPageAdmin />}
       {tab === 'Users' && <UsersAdmin />}
       {tab === 'Studio' && <StudioAdmin />}
+      {tab === 'Import' && <ImportAdmin />}
 
       {editing && (
         <Drawer title={`${editing.id ? 'Edit' : 'New'} ${editing.kind}`} onClose={() => setEditing(null)}>

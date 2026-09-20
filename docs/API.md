@@ -141,6 +141,12 @@ Sub-admins pass only for routes their `permissions` open (`artists`, `albums`, `
 | GET | `/admin/users` | `q, role, status=active\|disabled, page, limit` |
 | PATCH | `/admin/users/:id` | `{ role?: USER\|SUB_ADMIN\|ADMIN, permissions?: string[], disabled? }`: role/disable sign the user out everywhere; can't target yourself or the last admin. Role and permissions are full-admin only; sub-admins may only act on regular users |
 | POST | `/admin/users/:id/reset-password` | → `{ temporaryPassword }` (shown once); signs the user out and sets `mustChangePassword`. Not for your own account |
+| GET | `/admin/import/candidates` | `artistId` → iTunes artists with that name, for a human to pick |
+| GET | `/admin/import/preview` | `artistId`, `itunesId` → their tracks, each marked `skip: already-here \| junk \| null` |
+| POST | `/admin/import/run` | `{ artistId, itunesId, trackIds[] }`: creates the songs and any albums in one transaction, returns the batch |
+| GET | `/admin/import/batches` | past runs, newest first |
+| GET | `/admin/import/batches/:id/impact` | what an undo would delete right now (songs, albums, likes, playlist entries) |
+| POST | `/admin/import/batches/:id/undo` | deletes exactly the rows that run created; a run can only be undone once |
 | GET/PUT | `/admin/studio/settings` | `{ autoPublish: { profile, releases, posts } }` |
 | GET | `/admin/studio/links` | artists with their linked account |
 | GET | `/admin/studio/users` | `q`: account search for linking |
