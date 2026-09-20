@@ -134,6 +134,7 @@ The seed loads **15 artists / 10 albums / 31 songs** so the app isn't empty on d
 | `npm run shows:seed` | Load/refresh MTV Hustle S1–4 and Legacy S1 (idempotent) |
 | `npm run shows:import` | Import full show casts from `prisma/data/show-contestants.json` (MTV Hustle S1–5, LEGACY S1). Add `-- --dry` to preview |
 | `npm run shows:import:64bars` | Import Red Bull 64 Bars S1–S4 + Booth 2025 from `prisma/data/red-bull-64-bars.json`, creating each track as a song with producer credits |
+| `npm run coverage:catalog` | Check how many artists (and how many releases) the free iTunes Search API has for our catalog. Read-only; `-- --all` checks every artist |
 | `npm run handles:backfill` | Give artists without a handle one (Instagram username, else stage_name) |
 
 ## Deploying
