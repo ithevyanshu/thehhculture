@@ -7,6 +7,7 @@ import { Artwork } from '../../components/Artwork';
 import { useDialog } from '../../components/Dialog';
 import { Empty, Pagination, Spinner } from '../../components/ui';
 import { year } from '../../lib/format';
+import { SheetUpload } from './SheetUpload';
 import type { AlbumType, ArtistCard, Paged } from '../../lib/types';
 
 interface Candidate {
@@ -35,6 +36,8 @@ interface PreviewTrack {
 
 interface Batch {
   id: string;
+  source?: 'ITUNES' | 'SHEET';
+  label?: string | null;
   artistId: string | null;
   artistName: string;
   albumIds: string[];
@@ -260,15 +263,29 @@ function History() {
   });
 
   const undo = async (b: Batch) => {
-    const impact = await api<{ songs: string[]; albums: string[]; likes: number; playlistEntries: number }>(`/admin/import/batches/${b.id}/impact`);
-    const extra = [impact.likes && `${impact.likes} like${impact.likes === 1 ? '' : 's'}`, impact.playlistEntries && `${impact.playlistEntries} playlist entr${impact.playlistEntries === 1 ? 'y' : 'ies'}`]
+    const impact = await api<{ songs: string[]; albums: string[]; artists: string[]; restores: number; likes: number; playlistEntries: number }>(
+      `/admin/import/batches/${b.id}/impact`,
+    );
+    const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+    const deletes = [
+      impact.songs.length && plural(impact.songs.length, 'song'),
+      impact.albums.length && plural(impact.albums.length, 'release'),
+      impact.artists.length && plural(impact.artists.length, 'artist'),
+    ].filter(Boolean);
+    const extra = [impact.likes && plural(impact.likes, 'like'), impact.playlistEntries && plural(impact.playlistEntries, 'playlist entry', 'playlist entries')]
       .filter(Boolean)
       .join(' and ');
+
+    const what = [
+      impact.restores && `puts back ${plural(impact.restores, 'edited row')}`,
+      deletes.length && `deletes ${deletes.join(', ')}`,
+    ]
+      .filter(Boolean)
+      .join(' and ');
+    const subject = b.source === 'SHEET' ? (b.label ?? 'this upload') : b.artistName;
     const ok = await dialog.confirm(
-      `Undo this import? It deletes ${impact.songs.length} song${impact.songs.length === 1 ? '' : 's'} and ${impact.albums.length} release${impact.albums.length === 1 ? '' : 's'} for ${b.artistName}.` +
-        (extra ? ` That also removes ${extra}.` : '') +
-        ' Nothing you added or edited by hand is touched.',
-      { danger: true, confirmLabel: 'Undo import' },
+      `Undo ${subject}? It ${what || 'changes nothing'}.` + (extra ? ` That also removes ${extra}.` : '') + ' Nothing else you edited by hand is touched.',
+      { danger: true, confirmLabel: 'Undo' },
     );
     if (!ok) return;
     setBusy(b.id);
@@ -292,7 +309,10 @@ function History() {
             {data.items.map((b) => (
               <div key={b.id} className={`flex flex-wrap items-center gap-3 border-b border-dashed border-ink/25 px-3 py-2 last:border-b-0 ${b.undoneAt ? 'text-muted' : ''}`}>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-bold uppercase">{b.artistName}</p>
+                  <p className="truncate font-bold uppercase">
+                    {b.artistName}
+                    {b.label && <span className="mono ml-2 normal-case text-muted">{b.label}</span>}
+                  </p>
                   <p className="mono text-muted">
                     {b.songIds.length} songs · {b.albumIds.length} releases · {new Date(b.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
                     {b.createdBy && ` · @${b.createdBy.username}`}
@@ -345,6 +365,8 @@ export function ImportAdmin() {
           onImported={(n) => setDone(`Imported ${n} song${n === 1 ? '' : 's'} for ${artist.name}. Check the artist's page, and undo below if it looks wrong.`)}
         />
       )}
+
+      <SheetUpload onApplied={setDone} />
 
       <History />
     </div>

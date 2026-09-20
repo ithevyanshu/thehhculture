@@ -147,6 +147,11 @@ Sub-admins pass only for routes their `permissions` open (`artists`, `albums`, `
 | GET | `/admin/import/batches` | past runs, newest first |
 | GET | `/admin/import/batches/:id/impact` | what an undo would delete right now (songs, albums, likes, playlist entries) |
 | POST | `/admin/import/batches/:id/undo` | deletes exactly the rows that run created; a run can only be undone once |
+| GET | `/admin/sheets` | column definitions per kind (songs, albums, artists) |
+| GET | `/admin/sheets/template/:kind` | .xlsx template with headers, an example row and the notes sheet |
+| POST | `/admin/sheets/preview` | `?kind&filename`, raw file body (.xlsx/.csv, ≤8 MB) → per-row plan: `create | update | unchanged | error` with before/after per field |
+| POST | `/admin/sheets/apply` | same body; writes in one transaction, ≤400 changed rows, returns the batch |
+| POST | `/admin/import/batches/:id/undo` | also undoes spreadsheet batches: deletes what they created and restores what they edited |
 | GET/PUT | `/admin/studio/settings` | `{ autoPublish: { profile, releases, posts } }` |
 | GET | `/admin/studio/links` | artists with their linked account |
 | GET | `/admin/studio/users` | `q`: account search for linking |

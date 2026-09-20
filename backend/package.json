@@ -51,8 +51,10 @@
     "jsonwebtoken": "^9.0.3",
     "morgan": "^1.12.1",
     "prisma": "^6.19.3",
+    "read-excel-file": "^9.3.10",
     "tsx": "^4.23.13",
     "typescript": "~5.9",
+    "write-excel-file": "^4.1.1",
     "zod": "^3.25.76"
   }
 }

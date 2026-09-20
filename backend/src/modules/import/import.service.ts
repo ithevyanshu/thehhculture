@@ -238,6 +238,8 @@ export async function run(input: { artistId: string; itunesId: string; trackIds:
 export const batchSelect = {
   id: true,
   source: true,
+  label: true,
+  updates: true,
   artistId: true,
   artistName: true,
   albumIds: true,

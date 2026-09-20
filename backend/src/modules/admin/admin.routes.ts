@@ -11,6 +11,7 @@ import { usersAdminRouter } from './users.admin.routes';
 import { showsAdminRouter } from './shows.admin.routes';
 import { studioAdminRouter } from './studio.admin.routes';
 import { importAdminRouter } from './import.admin.routes';
+import { sheetsAdminRouter } from './sheets.admin.routes';
 import { slugify } from '../../lib/slug';
 import { requireAuth, requireStaff } from '../../middleware/auth';
 import { albumCardSelect } from '../catalog/selects';
@@ -38,6 +39,7 @@ adminRouter.use(suggestionsAdminRouter);
 adminRouter.use(showsAdminRouter);
 adminRouter.use(studioAdminRouter);
 adminRouter.use(importAdminRouter);
+adminRouter.use(sheetsAdminRouter);
 
 // ---------- Dashboard ----------
 

@@ -471,6 +471,7 @@ model ArtistPost {
 
 enum ImportSource {
   ITUNES
+  SHEET
 }
 
 /// One "import releases" run: exactly what it created, so it can be undone in one click.
@@ -486,6 +487,11 @@ model ImportBatch {
   /// Rows this run created; undo deletes these and nothing else.
   albumIds    String[]
   songIds     String[]
+  artistIds   String[]     @default([])
+  /// Spreadsheet uploads also change existing rows: [{ model, id, before }] so undo can put them back.
+  updates     Json?
+  /// Uploaded file name, for the history list.
+  label       String?
   createdAt   DateTime     @default(now())
   undoneAt    DateTime?
   undoneById  String?

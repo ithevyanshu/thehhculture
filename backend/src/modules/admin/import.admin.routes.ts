@@ -1,9 +1,10 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../../lib/prisma';
-import { pageMeta, paginate, paginationSchema, param, parse } from '../../lib/http';
+import { notFound, pageMeta, paginate, paginationSchema, param, parse } from '../../lib/http';
 import { currentUser } from '../../middleware/auth';
 import { batchSelect, findCandidates, preview, run, undo, undoImpact } from '../import/import.service';
+import { undoSheet } from '../import/sheet.service';
 
 /** Catalog import from iTunes, and the one-click undo for each run. Mounted under /admin. */
 export const importAdminRouter = Router();
@@ -47,15 +48,23 @@ importAdminRouter.get('/import/batches', async (req, res) => {
 /** What undoing would delete right now, so the confirmation can spell it out. */
 importAdminRouter.get('/import/batches/:id/impact', async (req, res) => {
   const { batch, songs, albums, likes, playlistEntries } = await undoImpact(param(req, 'id'));
+  const artists = batch.artistIds.length ? await prisma.artist.findMany({ where: { id: { in: batch.artistIds } }, select: { name: true } }) : [];
   res.json({
-    batch: { id: batch.id, artistName: batch.artistName, undoneAt: batch.undoneAt },
+    batch: { id: batch.id, source: batch.source, label: batch.label, artistName: batch.artistName, undoneAt: batch.undoneAt },
     songs: songs.map((s) => s.title),
     albums: albums.map((a) => a.title),
+    artists: artists.map((a) => a.name),
+    /** Spreadsheet uploads: rows whose previous values would be put back. */
+    restores: ((batch.updates ?? []) as unknown[]).length,
     likes,
     playlistEntries,
   });
 });
 
 importAdminRouter.post('/import/batches/:id/undo', async (req, res) => {
-  res.json(await undo(param(req, 'id'), currentUser(req).id));
+  const id = param(req, 'id');
+  const batch = await prisma.importBatch.findUnique({ where: { id }, select: { source: true } });
+  if (!batch) throw notFound('Import');
+  // Spreadsheet uploads also changed existing rows, so their undo restores the old values.
+  res.json(batch.source === 'SHEET' ? await undoSheet(id, currentUser(req).id) : await undo(id, currentUser(req).id));
 });

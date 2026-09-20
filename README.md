@@ -69,6 +69,11 @@ The two apps share no code. The backend is a plain JSON API that any client can 
   - Fills title, album (created when missing), release date, cover art, duration, explicit flag and track number.
   - Every run is recorded, and **Undo** deletes exactly the rows that run created — never anything you added or edited by hand.
   - `npm run coverage:catalog` reports how much iTunes has for your artists before you start.
+- **Spreadsheet upload (Admin → Import)**:
+  - Download an .xlsx template for songs, albums or artists: headers, an example row and a sheet explaining every column.
+  - Upload .xlsx or .csv back. Rows are matched by @handle, or by artist + title; blank cells are left unchanged, so a file can carry one column of corrections.
+  - The preview lists every row as add / update / unchanged / error, with the old and new value per field. Nothing is written until you press Apply.
+  - The whole upload is one transaction and one **Undo**: created rows are deleted and edited rows are put back exactly as they were.
 - **Artist Studio (`/studio`)**:
   - An admin links one account to one artist profile (Admin → Studio). The account gets the `ARTIST` role and a Studio link.
   - Artists edit their profile (bio, photo, links, city, genres, @handle), add, edit and remove their own songs and releases, and post short updates. Verified, featured, slugs and Spotify IDs stay admin-only.

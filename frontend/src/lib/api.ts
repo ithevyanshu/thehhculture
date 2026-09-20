@@ -79,6 +79,45 @@ interface RequestOptions {
   query?: Query;
 }
 
+/** Sends a file as the raw request body (spreadsheet uploads); same auth and retry as api(). */
+export async function apiUpload<T>(path: string, file: File | Blob, opts: { query?: Query } = {}, retry = true): Promise<T> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/octet-stream' };
+  if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+
+  const res = await fetch(`${BASE_URL}${path}${toQuery(opts.query)}`, { method: 'POST', headers, body: file, credentials: 'include' });
+  if (res.status === 401 && retry && accessToken) {
+    const session = await refreshSession();
+    onSessionChange?.(session?.user ?? null);
+    if (session) return apiUpload<T>(path, file, opts, false);
+  }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new ApiError(res.status, data?.error?.message ?? `Upload failed (${res.status})`, data?.error?.details);
+  return data as T;
+}
+
+/** Downloads a file the browser should save (the spreadsheet template). */
+export async function apiDownload(path: string, filename: string, retry = true): Promise<void> {
+  const headers: Record<string, string> = {};
+  if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+
+  const res = await fetch(`${BASE_URL}${path}`, { headers, credentials: 'include' });
+  if (res.status === 401 && retry && accessToken) {
+    const session = await refreshSession();
+    onSessionChange?.(session?.user ?? null);
+    if (session) return apiDownload(path, filename, false);
+  }
+  if (!res.ok) throw new ApiError(res.status, `Could not download (${res.status})`);
+
+  const url = URL.createObjectURL(await res.blob());
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
 export async function api<T>(path: string, opts: RequestOptions = {}, retry = true): Promise<T> {
   const headers: Record<string, string> = {};
   if (opts.body !== undefined) headers['Content-Type'] = 'application/json';

@@ -29,6 +29,8 @@ const RULES: Rule[] = [
   { path: /^\/studio(\/|$)/, allow: ['studio'] },
   // Importing creates songs and their albums, so either section opens it.
   { path: /^\/import(\/|$)/, allow: ['songs', 'albums'] },
+  // Spreadsheet uploads can touch songs, albums and artists.
+  { path: /^\/sheets(\/|$)/, allow: ['songs', 'albums', 'artists'] },
 ];
 
 /** Can a sub-admin with these permissions call `method path` (path relative to /admin)? */
