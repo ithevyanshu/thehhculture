@@ -23,7 +23,9 @@
     "shows:import": "tsx scripts/import-show-contestants.ts",
     "shows:import:64bars": "tsx scripts/import-show-contestants.ts --file red-bull-64-bars.json",
     "coverage:catalog": "tsx scripts/catalog-coverage.ts",
-    "handles:backfill": "tsx scripts/backfill-handles.ts"
+    "handles:backfill": "tsx scripts/backfill-handles.ts",
+    "catalog:backup": "tsx scripts/catalog-backup.ts",
+    "import:catalog": "tsx scripts/import-catalog.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

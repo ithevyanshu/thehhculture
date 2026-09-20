@@ -53,9 +53,11 @@ export interface PreviewTrack {
   genre: string | null;
   coverUrl: string | null;
   previewUrl: string | null;
-  /** Why it won't be imported: we already have it, or it looks like junk. */
-  skip: 'already-here' | 'junk' | null;
+  /** Why it won't be imported: we have it, it's junk, or it's someone else's song. */
+  skip: 'already-here' | 'junk' | 'other-artist' | null;
   existingSongTitle: string | null;
+  /** Set when the track belongs to another artist and ours is only featured on it. */
+  creditedTo: string | null;
 }
 
 export async function findCandidates(artistId: string) {
@@ -93,7 +95,12 @@ export async function preview(artistId: string, itunesId: string) {
     if (seen.has(key)) continue; // iTunes lists the same song on album + single
     seen.add(key);
     const existing = mine.get(key);
+    // iTunes lists tracks the artist is only featured on. Their own songs are the ones
+    // they lead: "SAMBATA & Karan Kanchan" counts, "Phenom & SAMBATA" doesn't.
+    const lead = t.artistName.split(/,| & | feat\.? | ft\.? | with | x /i)[0];
+    const theirOwn = norm(lead) === norm(artist.name);
     items.push({
+      creditedTo: theirOwn ? null : t.artistName,
       itunesTrackId: String(t.trackId),
       title: t.trackName,
       albumName: (t.trackCount ?? 1) > 1 ? (t.collectionName ?? null) : null,
@@ -106,7 +113,13 @@ export async function preview(artistId: string, itunesId: string) {
       genre: t.primaryGenreName ?? null,
       coverUrl: artwork(t.artworkUrl100),
       previewUrl: t.trackViewUrl ?? null,
-      skip: existing || byItunesId.has(String(t.trackId)) ? 'already-here' : JUNK.test(t.trackName) ? 'junk' : null,
+      skip: existing || byItunesId.has(String(t.trackId))
+        ? 'already-here'
+        : !theirOwn
+          ? 'other-artist'
+          : JUNK.test(t.trackName)
+            ? 'junk'
+            : null,
       existingSongTitle: existing ?? null,
     });
   }
