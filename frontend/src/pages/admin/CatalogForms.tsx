@@ -7,7 +7,7 @@ import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { X } from 'lucide-react';
 import { api, ApiError } from '../../lib/api';
-import { useArtists, useGenres, useRegions } from '../../lib/queries';
+import { useGenres, useRegions } from '../../lib/queries';
 import { toHandle, typingHandle, year } from '../../lib/format';
 import { Artwork } from '../../components/Artwork';
 import { Spinner } from '../../components/ui';
@@ -117,7 +117,7 @@ function useSubmit(onDone: (result: SubmitResult) => void) {
       setBusy(false);
     }
   };
-  return { error, busy, run };
+  return { error, busy, run, setError };
 }
 
 function FormActions({ busy, error, onCancel }: { busy: boolean; error: string | null; onCancel: () => void }) {
@@ -524,17 +524,27 @@ export function ArtistForm({ id, onDone, studio }: { id: string | null; onDone: 
 
 const albumTypes: AlbumType[] = ['ALBUM', 'EP', 'MIXTAPE', 'SINGLE'];
 
-function ArtistSelect({ value, onChange, required }: { value: string; onChange: (v: string) => void; required?: boolean }) {
-  const artists = useArtists({ sort: 'name', limit: 100 });
+/** Same @handle search as song credits: type a name or @handle, or create someone new. */
+function ArtistPicker({ value, onChange }: { value: string; onChange: (id: string) => void }) {
+  const [picked, setPicked] = useState<HandleRef | null>(null);
+  // Editing an existing album/song: look up the artist behind the stored id once.
+  const { data } = useQuery({
+    queryKey: ['admin', 'artist', value],
+    queryFn: () => api<{ artist: HandleRef }>(`/admin/artists/${value}`),
+    enabled: !!value && picked?.id !== value,
+  });
+  const current = picked?.id === value ? picked : value ? (data?.artist ?? null) : null;
+
   return (
-    <select className="input" value={value} onChange={(e) => onChange(e.target.value)} required={required}>
-      <option value="">Select artist…</option>
-      {artists.data?.items.map((a) => (
-        <option key={a.id} value={a.id}>
-          {a.name}
-        </option>
-      ))}
-    </select>
+    <HandleInput
+      value={current ? [current] : []}
+      onChange={(list) => {
+        const next = list[list.length - 1] ?? null; // one artist only
+        setPicked(next);
+        onChange(next?.id ?? '');
+      }}
+      placeholder="Type a name or @handle…"
+    />
   );
 }
 
@@ -543,7 +553,7 @@ export function AlbumForm({ id, onDone, studio }: { id: string | null; onDone: (
   const [form, setForm] = useState(blank);
   const [initial, setInitial] = useState(blank);
   const [loaded, setLoaded] = useState(!id);
-  const { error, busy, run } = useSubmit(onDone);
+  const { error, busy, run, setError } = useSubmit(onDone);
   const base = studio ? '/studio' : '/admin';
 
   useEffect(() => {
@@ -569,6 +579,7 @@ export function AlbumForm({ id, onDone, studio }: { id: string | null; onDone: (
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
+    if (!form.artistId) return setError('Pick the artist this release belongs to');
     const clean = (f: typeof form) => ({ ...f, slug: f.slug || undefined, spotifyId: f.spotifyId ? spotifyId(f.spotifyId) : '' });
     if (studio) {
       // The owning artist and slug are implied on the server.
@@ -588,7 +599,7 @@ export function AlbumForm({ id, onDone, studio }: { id: string | null; onDone: (
       </Field>
       {!studio && (
         <Field label="Artist *">
-          <ArtistSelect value={form.artistId} onChange={(artistId) => setForm({ ...form, artistId })} required />
+          <ArtistPicker value={form.artistId} onChange={(artistId) => setForm({ ...form, artistId })} />
         </Field>
       )}
       <div className="grid gap-4 sm:grid-cols-2">
@@ -645,7 +656,7 @@ export function SongForm({ id, onDone, studio }: { id: string | null; onDone: (r
   const [form, setForm] = useState(blank);
   const [initial, setInitial] = useState(blank);
   const [loaded, setLoaded] = useState(!id);
-  const { error, busy, run } = useSubmit(onDone);
+  const { error, busy, run, setError } = useSubmit(onDone);
   const base = studio ? '/studio' : '/admin';
   const albums = useQuery({
     queryKey: [studio ? 'studio' : 'admin', 'albums', form.artistId],
@@ -696,6 +707,7 @@ export function SongForm({ id, onDone, studio }: { id: string | null; onDone: (r
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
+    if (!form.artistId) return setError('Pick the primary artist');
     if (studio) {
       const strip = ({ artistId: _a, slug: _s, ...rest }: ReturnType<typeof toBody>) => rest;
       const body = id ? changedOnly(strip(toBody(initial)), strip(toBody(form))) : strip(toBody(form));
@@ -714,7 +726,7 @@ export function SongForm({ id, onDone, studio }: { id: string | null; onDone: (r
       <div className="grid gap-4 sm:grid-cols-2">
         {!studio && (
           <Field label="Primary artist *">
-            <ArtistSelect value={form.artistId} onChange={(artistId) => setForm({ ...form, artistId, albumId: '' })} required />
+            <ArtistPicker value={form.artistId} onChange={(artistId) => setForm({ ...form, artistId, albumId: '' })} />
           </Field>
         )}
         <Field label="Album / release">
