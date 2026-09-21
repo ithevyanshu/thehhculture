@@ -30,6 +30,18 @@ export const paginationSchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(24),
 });
 
+/**
+ * A link we're willing to store and render. Zod's .url() accepts any scheme, and these
+ * values end up in <a href> and <img src>, where a javascript: or data: URL would run
+ * as script for everyone who opens the page.
+ */
+export const webUrl = z
+  .string()
+  .trim()
+  .url()
+  .max(500)
+  .refine((v) => /^https?:\/\//i.test(v), 'Links have to start with http:// or https://');
+
 export function paginate(page: number, limit: number) {
   return { skip: (page - 1) * limit, take: limit };
 }

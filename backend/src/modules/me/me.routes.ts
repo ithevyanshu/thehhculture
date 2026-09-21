@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../../lib/prisma';
-import { pageMeta, paginate, paginationSchema, parse } from '../../lib/http';
+import { pageMeta, paginate, paginationSchema, parse, webUrl } from '../../lib/http';
 import { currentUser, requireAuth } from '../../middleware/auth';
 import { getPublicUser, publicUserSelect } from '../auth/auth.service';
 import { artistCardSelect, songCardSelect, withFollowFlags, withLikeFlags } from '../catalog/selects';
@@ -9,7 +9,7 @@ import { artistCardSelect, songCardSelect, withFollowFlags, withLikeFlags } from
 export const meRouter = Router();
 meRouter.use(requireAuth);
 
-const optionalUrl = z.union([z.string().trim().url().max(500), z.literal('')]).optional();
+const optionalUrl = z.union([webUrl, z.literal('')]).optional();
 
 const profileSchema = z.object({
   displayName: z.string().trim().min(1).max(50).optional(),

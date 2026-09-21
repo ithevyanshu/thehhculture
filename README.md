@@ -124,7 +124,9 @@ Or, from the repo root, run both at once: `npm install && npm run dev`.
 | Account | Login | Notes |
 |---|---|---|
 | Admin | your `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Opens `/admin` |
-| Demo listener | `demo` / `demo12345` | Development only (not created when `NODE_ENV=production`). Already follows artists and has likes, so the personalized home has data. |
+| Demo listener | `demo` / see `DEMO_PASSWORD` in your `.env` | Local development only — never created when `NODE_ENV=production`. Already follows artists and has likes, so the personalized home has data. |
+
+> The demo password is no longer written down here. Set `DEMO_PASSWORD` in your local `.env` before seeding; without it the demo account is skipped. If a demo account ever reaches a live database, disable it in **Admin → Users**.
 
 ## Starter data
 

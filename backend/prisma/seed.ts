@@ -366,7 +366,14 @@ async function main() {
   }
 
   // ---- Demo listener (development only) so the personalized home has signal ----
-  if (process.env.NODE_ENV !== 'production') {
+  // Needs DEMO_PASSWORD in .env: a password written into the repo is a published
+  // password, and this account has reached a live database before.
+  const demoPassword = process.env.DEMO_PASSWORD;
+  if (process.env.NODE_ENV === 'production') {
+    console.log('Skipping the demo account: NODE_ENV is production');
+  } else if (!demoPassword) {
+    console.log('Skipping the demo account: set DEMO_PASSWORD in .env to create it');
+  } else {
     const demo = await prisma.user.upsert({
       where: { email: 'demo@dhh.local' },
       create: {
@@ -374,7 +381,7 @@ async function main() {
         username: 'demo',
         displayName: 'Demo Listener',
         onboarded: true,
-        passwordHash: await bcrypt.hash('demo12345', 12),
+        passwordHash: await bcrypt.hash(demoPassword, 12),
         favoriteGenres: { connect: [{ slug: 'boom-bap' }, { slug: 'gully-rap' }] },
         favoriteRegions: { connect: [{ slug: 'delhi' }, { slug: 'mumbai' }] },
       },
@@ -391,7 +398,7 @@ async function main() {
       data: liked.map((s) => ({ userId: demo.id, songId: s.id })),
       skipDuplicates: true,
     });
-    console.log('Demo account ready: demo@dhh.local / demo12345 (dev only)');
+    console.log('Demo account ready: demo@dhh.local, password from DEMO_PASSWORD (dev only)');
   }
 
   const counts = await Promise.all([prisma.artist.count(), prisma.album.count(), prisma.song.count()]);

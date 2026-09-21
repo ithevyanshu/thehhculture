@@ -97,4 +97,4 @@ Push to `main` and both Vercel and Railway redeploy automatically. Schema change
 
 - Run **one** Railway replica. The click de-duplication and settings cache are in memory.
 - Handy one-off commands can be run from Railway's service shell (or locally against the production `.env`), e.g. `npm run images:fetch`, `npm run socials:fetch`, `npm run shows:seed`.
-- The demo account (`demo`/`demo12345`) is created only when seeding with `NODE_ENV` other than `production`. Your database already has it from development: disable it in **Admin → Users** before launch.
+- The demo account is created only when seeding outside production **and** `DEMO_PASSWORD` is set. Your live database already has one from development, with a password that used to be printed in the README: **disable `demo` in Admin → Users.** Treat that password as public.

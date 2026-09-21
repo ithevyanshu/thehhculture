@@ -21,11 +21,20 @@ export function optionalAuth(req: Request, _res: Response, next: NextFunction) {
   next();
 }
 
-/** Rejects with 401 unless a valid access token is present. */
-export function requireAuth(req: Request, _res: Response, next: NextFunction) {
+/**
+ * Rejects with 401 unless a valid access token is present and the account is still active.
+ *
+ * Disabling a user revokes their refresh tokens, but the access token they already hold
+ * stays valid for its remaining minutes, so the account is checked here too — one
+ * primary-key lookup on routes that already hit the database.
+ */
+export async function requireAuth(req: Request, _res: Response, next: NextFunction) {
   const token = readBearer(req);
   const payload = token ? verifyAccessToken(token) : null;
   if (!payload) return next(unauthorized());
+  const account = await prisma.user.findUnique({ where: { id: payload.sub }, select: { disabled: true } });
+  if (!account) return next(unauthorized());
+  if (account.disabled) return next(forbidden('This account has been disabled'));
   req.user = { id: payload.sub, role: payload.role };
   next();
 }

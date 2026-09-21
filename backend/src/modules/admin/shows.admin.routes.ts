@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { ShowRole } from '@prisma/client';
 import { z } from 'zod';
 import { prisma } from '../../lib/prisma';
-import { badRequest, conflict, notFound, param, parse } from '../../lib/http';
+import { badRequest, conflict, notFound, param, parse, webUrl } from '../../lib/http';
 import { slugify, uniqueSlug } from '../../lib/slug';
 import { listShows } from '../shows/shows.routes';
 
@@ -28,7 +28,7 @@ const showSchema = z.object({
   network: text(60),
   description: text(2000),
   logoUrl: z
-    .union([z.string().trim().url().max(500), z.literal('')])
+    .union([webUrl, z.literal('')])
     .nullish()
     .transform((v) => v || null),
 });

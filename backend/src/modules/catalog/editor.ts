@@ -5,7 +5,7 @@
 import { AlbumType } from '@prisma/client';
 import { z } from 'zod';
 import { prisma } from '../../lib/prisma';
-import { badRequest, conflict, notFound } from '../../lib/http';
+import { badRequest, conflict, notFound, webUrl } from '../../lib/http';
 import { HANDLE_RE, autoHandle, handleAfterInstagramChange, normalizeHandle, uniqueHandle } from '../../lib/handles';
 import { slugify, uniqueSlug } from '../../lib/slug';
 import { instagramUrl } from '../images/wikipedia';
@@ -22,7 +22,7 @@ export const nullableText = (max = 500) =>
     .nullish()
     .transform((v) => (v ? v : null));
 export const nullableUrl = z
-  .union([z.string().trim().url().max(500), z.literal('')])
+  .union([webUrl, z.literal('')])
   .nullish()
   .transform((v) => (v ? v : null));
 const nullableDate = z
