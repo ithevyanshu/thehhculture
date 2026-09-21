@@ -9,7 +9,7 @@ import { AlbumType, Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 import { badRequest, notFound } from '../../lib/http';
 import { slugify, uniqueSlug } from '../../lib/slug';
-import { artistTracks, artwork, searchArtists, type ItunesTrack } from './itunes';
+import { artistTracks, artwork, lookupTracks, searchArtists, searchSongs, type ItunesTrack } from './itunes';
 
 /** "KR$NA" -> "krsna", "MC STΔN" -> "mcstan": spelling noise shouldn't break matching. */
 export const norm = (s: string) =>
@@ -77,26 +77,74 @@ export async function findCandidates(artistId: string) {
   };
 }
 
-export async function preview(artistId: string, itunesId: string) {
-  const artist = await prisma.artist.findUnique({
-    where: { id: artistId },
-    select: { id: true, name: true, songs: { select: { title: true, itunesTrackId: true } } },
-  });
+type Artist = { id: string; name: string; songs: { title: string }[] };
+
+async function loadArtist(artistId: string): Promise<Artist> {
+  const artist = await prisma.artist.findUnique({ where: { id: artistId }, select: { id: true, name: true, songs: { select: { title: true } } } });
   if (!artist) throw notFound('Artist');
+  return artist;
+}
 
-  const mine = new Map(artist.songs.map((s) => [titleKey(s.title), s.title]));
-  const tracks = await artistTracks(itunesId);
+/** What we already have, so iTunes tracks can be marked up against it. */
+interface Catalog {
+  artistName: string;
+  /** This artist's song titles, by normalised title. */
+  mine: Map<string, string>;
+  /** Songs anywhere in the catalog that already carry one of these iTunes ids. */
+  elsewhere: Map<string, { title: string; artist: { name: string } }>;
+}
 
+async function catalogFor(artist: Artist, tracks: ItunesTrack[]): Promise<Catalog> {
   // A track can already be here under a collaborator ("Seedhe Maut & KR$NA" lands under
-  // Seedhe Maut). Importing it again would break the unique iTunes id, so skip it.
-  const existingById = new Map(
-    (
-      await prisma.song.findMany({
-        where: { itunesTrackId: { in: tracks.map((t) => String(t.trackId)) } },
-        select: { itunesTrackId: true, title: true, artist: { select: { name: true } } },
-      })
-    ).map((s) => [s.itunesTrackId!, s]),
-  );
+  // Seedhe Maut). Importing it again would break the unique iTunes id, so it gets skipped.
+  const rows = await prisma.song.findMany({
+    where: { itunesTrackId: { in: tracks.map((t) => String(t.trackId)) } },
+    select: { itunesTrackId: true, title: true, artist: { select: { name: true } } },
+  });
+  return {
+    artistName: artist.name,
+    mine: new Map(artist.songs.map((s) => [titleKey(s.title), s.title])),
+    elsewhere: new Map(rows.map((s) => [s.itunesTrackId!, s])),
+  };
+}
+
+/** One iTunes track, judged against what we already have. Shared by preview and search. */
+function toPreviewTrack(t: ItunesTrack, cat: Catalog): PreviewTrack {
+  const elsewhere = cat.elsewhere.get(String(t.trackId));
+  const existing = cat.mine.get(titleKey(t.trackName)) ?? (elsewhere ? `${elsewhere.title} (under ${elsewhere.artist.name})` : undefined);
+  // iTunes lists tracks the artist is only featured on. Their own songs are the ones
+  // they lead: "SAMBATA & Karan Kanchan" counts, "Phenom & SAMBATA" doesn't.
+  const lead = t.artistName.split(/,| & | feat\.? | ft\.? | with | x /i)[0];
+  const theirOwn = norm(lead) === norm(cat.artistName);
+  return {
+    creditedTo: theirOwn ? null : t.artistName,
+    itunesTrackId: String(t.trackId),
+    title: t.trackName,
+    albumName: (t.trackCount ?? 1) > 1 ? (t.collectionName ?? null) : null,
+    itunesCollectionId: (t.trackCount ?? 1) > 1 && t.collectionId ? String(t.collectionId) : null,
+    albumType: ALBUM_TYPE(t),
+    trackNumber: t.trackNumber ?? null,
+    releaseDate: t.releaseDate ?? null,
+    durationSec: t.trackTimeMillis ? Math.round(t.trackTimeMillis / 1000) : null,
+    explicit: t.trackExplicitness === 'explicit',
+    genre: t.primaryGenreName ?? null,
+    coverUrl: artwork(t.artworkUrl100),
+    previewUrl: t.trackViewUrl ?? null,
+    skip: existing
+      ? 'already-here'
+      : !theirOwn
+        ? 'other-artist'
+        : JUNK.test(t.trackName)
+          ? 'junk'
+          : null,
+    existingSongTitle: existing ?? null,
+  };
+}
+
+export async function preview(artistId: string, itunesId: string) {
+  const artist = await loadArtist(artistId);
+  const tracks = await artistTracks(itunesId);
+  const cat = await catalogFor(artist, tracks);
 
   const seen = new Set<string>();
   const items: PreviewTrack[] = [];
@@ -104,37 +152,34 @@ export async function preview(artistId: string, itunesId: string) {
     const key = titleKey(t.trackName);
     if (seen.has(key)) continue; // iTunes lists the same song on album + single
     seen.add(key);
-    const elsewhere = existingById.get(String(t.trackId));
-    const existing = mine.get(key) ?? (elsewhere ? `${elsewhere.title} (under ${elsewhere.artist.name})` : undefined);
-    // iTunes lists tracks the artist is only featured on. Their own songs are the ones
-    // they lead: "SAMBATA & Karan Kanchan" counts, "Phenom & SAMBATA" doesn't.
-    const lead = t.artistName.split(/,| & | feat\.? | ft\.? | with | x /i)[0];
-    const theirOwn = norm(lead) === norm(artist.name);
-    items.push({
-      creditedTo: theirOwn ? null : t.artistName,
-      itunesTrackId: String(t.trackId),
-      title: t.trackName,
-      albumName: (t.trackCount ?? 1) > 1 ? (t.collectionName ?? null) : null,
-      itunesCollectionId: (t.trackCount ?? 1) > 1 && t.collectionId ? String(t.collectionId) : null,
-      albumType: ALBUM_TYPE(t),
-      trackNumber: t.trackNumber ?? null,
-      releaseDate: t.releaseDate ?? null,
-      durationSec: t.trackTimeMillis ? Math.round(t.trackTimeMillis / 1000) : null,
-      explicit: t.trackExplicitness === 'explicit',
-      genre: t.primaryGenreName ?? null,
-      coverUrl: artwork(t.artworkUrl100),
-      previewUrl: t.trackViewUrl ?? null,
-      skip: existing
-        ? 'already-here'
-        : !theirOwn
-          ? 'other-artist'
-          : JUNK.test(t.trackName)
-            ? 'junk'
-            : null,
-      existingSongTitle: existing ?? null,
-    });
+    items.push(toPreviewTrack(t, cat));
   }
   return { artist: { id: artist.id, name: artist.name }, itunesId, items };
+}
+
+/**
+ * Free-text search across all of iTunes, for the songs the artist listing can't reach:
+ * one-off features, label uploads, and anything past its 200-track ceiling.
+ *
+ * Apple's relevance is loose, so the artist's own tracks are floated to the top.
+ */
+export async function searchTracks(artistId: string, term: string) {
+  const artist = await loadArtist(artistId);
+  const tracks = await searchSongs(term);
+  const cat = await catalogFor(artist, tracks);
+
+  const seen = new Set<string>();
+  const items: PreviewTrack[] = [];
+  for (const t of tracks) {
+    // The same title by a different artist is a different song, so the credit is part of the key.
+    const key = `${titleKey(t.trackName)}|${norm(t.artistName)}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    items.push(toPreviewTrack(t, cat));
+  }
+  const rank = (i: PreviewTrack) => (!i.creditedTo ? 0 : norm(i.creditedTo).includes(norm(artist.name)) ? 1 : 2);
+  items.sort((a, b) => rank(a) - rank(b));
+  return { artist: { id: artist.id, name: artist.name }, term, items };
 }
 
 /**
@@ -143,13 +188,32 @@ export async function preview(artistId: string, itunesId: string) {
  * Everything is written in one transaction: if any row fails, the whole run rolls back
  * rather than leaving half an import behind. Slugs are resolved first, because slug
  * lookups on the shared client would deadlock against the transaction's connection.
+ *
+ * Picks can come from the artist's listing or from a search, so anything not in the
+ * listing is fetched by id. Junk and other-artist tracks import when they were ticked
+ * on purpose; only songs we already have are refused.
  */
-export async function run(input: { artistId: string; itunesId: string; trackIds: string[]; userId: string }) {
+export async function run(input: { artistId: string; itunesId?: string | null; trackIds: string[]; userId: string }) {
   const { artistId, itunesId, trackIds, userId } = input;
   if (!trackIds.length) throw badRequest('Pick at least one song');
 
-  const { artist, items } = await preview(artistId, itunesId);
-  const wanted = items.filter((t) => trackIds.includes(t.itunesTrackId) && t.skip !== 'already-here');
+  const artist = await loadArtist(artistId);
+  const listed = itunesId ? await artistTracks(itunesId) : [];
+  const found = listed.filter((t) => trackIds.includes(String(t.trackId)));
+  const missing = trackIds.filter((id) => !found.some((t) => String(t.trackId) === id));
+  const tracks = [...found, ...(missing.length ? await lookupTracks(missing) : [])];
+  if (!tracks.length) throw badRequest('iTunes no longer lists those songs');
+
+  const cat = await catalogFor(artist, tracks);
+  const seen = new Set<string>();
+  const wanted: PreviewTrack[] = [];
+  for (const t of tracks) {
+    const item = toPreviewTrack(t, cat);
+    if (item.skip === 'already-here') continue;
+    if (seen.has(titleKey(item.title))) continue; // the same song picked twice, e.g. album and single
+    seen.add(titleKey(item.title));
+    wanted.push(item);
+  }
   if (!wanted.length) throw badRequest('Nothing left to import: those songs are already here');
 
   // Slugs must be unique against the database AND against the rest of this batch.
@@ -218,7 +282,7 @@ export async function run(input: { artistId: string; itunesId: string; trackIds:
         select: { id: true },
       });
 
-      await tx.artist.update({ where: { id: artistId }, data: { itunesId } });
+      if (itunesId) await tx.artist.update({ where: { id: artistId }, data: { itunesId } });
       return tx.importBatch.create({
         data: {
           artistId,

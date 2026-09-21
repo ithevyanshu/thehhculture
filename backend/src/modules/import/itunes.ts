@@ -76,3 +76,22 @@ export async function artistTracks(itunesId: string, limit = 200) {
   const { results } = await call<{ results: (ItunesArtist | ItunesTrack)[] }>('/lookup', { id: itunesId, entity: 'song', limit });
   return results.filter((r): r is ItunesTrack => r.wrapperType === 'track' && r.kind === 'song');
 }
+
+/**
+ * Free-text song search. The artist lookup above stops at 200 tracks and only lists what
+ * Apple files under that artist page, so one-off features and label uploads need this.
+ */
+export async function searchSongs(term: string, limit = 25) {
+  const { results } = await call<{ results: ItunesTrack[] }>('/search', { term, entity: 'song', limit });
+  return results.filter((r) => r.wrapperType === 'track' && r.kind === 'song');
+}
+
+/** Full details for specific tracks. Apple takes a comma-separated list of ids. */
+export async function lookupTracks(trackIds: string[]) {
+  const out: ItunesTrack[] = [];
+  for (let i = 0; i < trackIds.length; i += 50) {
+    const { results } = await call<{ results: (ItunesArtist | ItunesTrack)[] }>('/lookup', { id: trackIds.slice(i, i + 50).join(',') });
+    out.push(...results.filter((r): r is ItunesTrack => r.wrapperType === 'track' && r.kind === 'song'));
+  }
+  return out;
+}

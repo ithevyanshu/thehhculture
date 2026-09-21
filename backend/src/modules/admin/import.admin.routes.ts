@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../../lib/prisma';
 import { notFound, pageMeta, paginate, paginationSchema, param, parse } from '../../lib/http';
 import { currentUser } from '../../middleware/auth';
-import { batchSelect, findCandidates, preview, run, undo, undoImpact } from '../import/import.service';
+import { batchSelect, findCandidates, preview, run, searchTracks, undo, undoImpact } from '../import/import.service';
 import { undoSheet } from '../import/sheet.service';
 
 /** Catalog import from iTunes, and the one-click undo for each run. Mounted under /admin. */
@@ -24,11 +24,18 @@ importAdminRouter.get('/import/preview', async (req, res) => {
   res.json(await preview(artistId, itunesId));
 });
 
+/** Search all of iTunes by song title, for releases the artist listing doesn't carry. */
+importAdminRouter.get('/import/search', async (req, res) => {
+  const { artistId, q } = parse(z.object({ artistId: z.string().min(1), q: z.string().trim().min(2).max(120) }), req.query);
+  res.json(await searchTracks(artistId, q));
+});
+
 importAdminRouter.post('/import/run', async (req, res) => {
   const input = parse(
     z.object({
       artistId: z.string().min(1),
-      itunesId: itunesIdSchema,
+      // Absent when everything was picked from search rather than an artist's listing.
+      itunesId: itunesIdSchema.nullish(),
       trackIds: z.array(itunesIdSchema).min(1).max(200),
     }),
     req.body,
