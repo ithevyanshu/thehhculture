@@ -64,11 +64,13 @@ searchRouter.get('/', optionalAuth, async (req, res) => {
   const { q } = parse(z.object({ q: z.string().trim().min(1).max(100) }), req.query);
   const contains = { contains: q, mode: 'insensitive' as const };
 
-  const [artists, songs, albums] = await Promise.all([
+  const ARTIST_SLOTS = 8;
+
+  const [named, songs, albums] = await Promise.all([
     prisma.artist.findMany({
-      where: { OR: [{ name: contains }, { realName: contains }] },
+      where: { OR: [{ name: contains }, { realName: contains }, { handle: contains }] },
       orderBy: { followers: { _count: 'desc' } },
-      take: 8,
+      take: ARTIST_SLOTS,
       select: artistCardSelect,
     }),
     prisma.song.findMany({
@@ -84,6 +86,21 @@ searchRouter.get('/', optionalAuth, async (req, res) => {
       select: albumCardSelect,
     }),
   ]);
+
+  // Searching a song title should still tell you who made it. Whatever slots are left
+  // after the name matches go to the artists behind the matching songs and albums,
+  // in the order those results came back.
+  const seen = new Set(named.map((a) => a.id));
+  const behind: string[] = [];
+  for (const row of [...songs, ...albums]) {
+    if (seen.has(row.artist.id)) continue;
+    seen.add(row.artist.id);
+    behind.push(row.artist.id);
+  }
+  const wanted = behind.slice(0, Math.max(0, ARTIST_SLOTS - named.length));
+  const extra = wanted.length ? await prisma.artist.findMany({ where: { id: { in: wanted } }, select: artistCardSelect }) : [];
+  const byId = new Map(extra.map((a) => [a.id, a]));
+  const artists = [...named, ...wanted.map((id) => byId.get(id)).filter((a) => !!a)];
 
   const [flaggedArtists, flaggedSongs] = await Promise.all([
     withFollowFlags(req.user?.id, artists),
