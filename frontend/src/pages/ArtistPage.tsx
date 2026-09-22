@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { BadgeCheck, ExternalLink, Mic } from 'lucide-react';
+import { BadgeCheck, ExternalLink, Mic, Users } from 'lucide-react';
 import { useArtist, useArtistSongs } from '../lib/queries';
 import { at, compact } from '../lib/format';
 import { Artwork } from '../components/Artwork';
@@ -9,8 +9,22 @@ import { FollowButton } from '../components/Buttons';
 import { MissingHere, useSuggest } from '../components/Suggest';
 import { InstagramLink } from '../components/Instagram';
 import { PostCard } from '../components/PostCard';
-import { SHOW_ROLE_LABEL, type ShowAppearance, type ShowRole } from '../lib/types';
+import { EventRow } from '../components/EventCards';
+import { SHOW_ROLE_LABEL, type Membership, type ShowAppearance, type ShowRole } from '../lib/types';
 import { Empty, ErrorState, FitTitle, Pagination, SectionHeader, Shelf, Spinner } from '../components/ui';
+
+/** What to call a group of this size when it hasn't said. */
+const memberWord = (n: number) => (n === 2 ? 'Duo' : n === 3 ? 'Trio' : 'Group');
+
+function MemberTile({ member }: { member: Membership }) {
+  const note = [member.role, member.since && (member.until ? `${member.since}–${member.until}` : `since ${member.since}`)].filter(Boolean).join(' · ');
+  return (
+    <div>
+      <ArtistTile artist={member.artist} />
+      {note && <p className="mono mt-1 text-dim">{note}</p>}
+    </div>
+  );
+}
 
 function Stat({ value, label }: { value: number; label: string }) {
   return (
@@ -92,7 +106,9 @@ export function ArtistPage() {
   if (isLoading) return <Spinner />;
   if (error || !data) return <ErrorState error={error} retry={refetch} />;
 
-  const { artist, topSongs, featuredOn, related, produced, appearances, posts = [] } = data;
+  const { artist, topSongs, featuredOn, related, produced, appearances, posts = [], events = [], members = [], memberOf = [], groupWork = [] } = data;
+  const current = members.filter((m) => !m.until);
+  const former = members.filter((m) => m.until);
   const links = [
     { href: artist.spotifyUrl, label: 'Spotify' },
     { href: artist.youtubeUrl, label: 'YouTube' },
@@ -100,10 +116,12 @@ export function ArtistPage() {
 
   const byline = [
     at(artist),
+    // A group leads with what it is and who's in it, not with a "real name".
+    artist.isGroup ? (artist.groupKind ?? memberWord(current.length)) : null,
     artist.isProducer && 'Producer',
-    artist.realName && `a.k.a. ${artist.realName}`,
+    !artist.isGroup && artist.realName && `a.k.a. ${artist.realName}`,
     artist.region?.name,
-    artist.activeSince && `est. ${artist.activeSince}`,
+    artist.activeSince && `${artist.isGroup ? 'formed' : 'est.'} ${artist.activeSince}`,
   ].filter(Boolean);
 
   return (
@@ -156,6 +174,11 @@ export function ArtistPage() {
                 <Mic size={12} /> Official
               </span>
             )}
+            {memberOf.map((m) => (
+              <Link key={m.artist.id} to={`/artists/${m.artist.slug}`} className="mono inline-flex items-center gap-1 border-2 border-ink bg-neon px-2.5 py-1">
+                <Users size={12} /> {m.until ? 'Was in' : 'Member of'} {m.artist.name}
+              </Link>
+            ))}
             {artist.genres.map((g) => (
               <Link key={g.slug} to={`/artists?genre=${g.slug}`} className="chip">
                 {g.name}
@@ -190,6 +213,11 @@ export function ArtistPage() {
                   <SongRow key={s.id} song={s} index={i + 1} />
                 ))}
               </TrackList>
+            ) : groupWork.length ? (
+              // Not empty at all — their catalog sits under the group, just below.
+              <Empty title="Nothing solo yet">
+                <p>Everything {artist.name} has put out is with {groupWork.map((g) => g.group.name).join(' and ')}, below.</p>
+              </Empty>
             ) : (
               <Empty title="No songs yet" />
             )}
@@ -206,6 +234,50 @@ export function ArtistPage() {
           </aside>
         )}
       </div>
+
+      {artist.isGroup && members.length > 0 && (
+        <section className="mb-16">
+          <SectionHeader kicker={`Who's in ${artist.name}`} title="Members" />
+          <div className="grid grid-cols-2 gap-x-5 gap-y-10 pt-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6">
+            {current.map((m) => (
+              <MemberTile key={m.artist.id} member={m} />
+            ))}
+          </div>
+          {former.length > 0 && (
+            <>
+              <p className="mono mt-10 mb-3 text-muted">Formerly</p>
+              <div className="grid grid-cols-2 gap-x-5 gap-y-10 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6">
+                {former.map((m) => (
+                  <MemberTile key={m.artist.id} member={m} />
+                ))}
+              </div>
+            </>
+          )}
+        </section>
+      )}
+
+      {/* The group holds the catalog, so this is where a member's work actually lives. */}
+      {groupWork.map(
+        (g) =>
+          g.songs.length > 0 && (
+            <Shelf key={g.group.id} kicker={`As part of ${g.group.name}`} title={`With ${g.group.name}`} seeAllTo={`/artists/${g.group.slug}`}>
+              {g.songs.map((s) => (
+                <SongTile key={s.id} song={s} />
+              ))}
+            </Shelf>
+          ),
+      )}
+
+      {events.length > 0 && (
+        <section className="mb-16">
+          <SectionHeader kicker="Catch them live" title="Upcoming" />
+          <div className="mt-3 border-2 border-ink bg-surface shadow-hard">
+            {events.map((e) => (
+              <EventRow key={e.id} event={e} />
+            ))}
+          </div>
+        </section>
+      )}
 
       {posts.length > 0 && (
         <section className="mb-16">

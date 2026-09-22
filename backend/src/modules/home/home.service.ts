@@ -5,13 +5,14 @@ import { playlistCardSelect } from '../playlists/playlists.routes';
 import { getSiteConfig, type SiteConfig } from '../site/config';
 import { topArtists } from '../catalog/views';
 import { listShows } from '../shows/shows.routes';
+import { upcomingEvents } from '../events/events.routes';
 
 /**
  * Home feed = cover story + ordered list of typed sections. The order, visibility and
  * headings come from the admin-editable layout (SiteSetting "sections"); clients just
  * render each `kind`, so the layout can change without client releases.
  */
-export type SectionKind = 'songs' | 'artists' | 'recent' | 'playlists' | 'genres' | 'chart' | 'scenes' | 'artist-ranking' | 'shows' | 'posts';
+export type SectionKind = 'songs' | 'artists' | 'recent' | 'playlists' | 'genres' | 'chart' | 'scenes' | 'artist-ranking' | 'shows' | 'posts' | 'events';
 
 export interface HomeSection {
   id: string;
@@ -168,6 +169,12 @@ const BUILDERS: Record<string, Builder> = {
       items: await listShows(),
     },
   ],
+
+  // Only renders when something is actually coming up, so the block never sits empty.
+  events: async () => {
+    const items = await upcomingEvents(10);
+    return items.length ? [{ id: 'events', kind: 'events' as const, title: "What's on", subtitle: 'Gigs, festivals and launches coming up', items }] : [];
+  },
 
   // Artists' own Studio posts: from the artists you follow, else the latest from everyone.
   'artist-posts': async (ctx) => {

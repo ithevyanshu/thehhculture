@@ -55,6 +55,10 @@ export interface ArtistCard extends ArtistRef {
   verified: boolean;
   instagramUrl?: string | null;
   isProducer?: boolean;
+  /** A duo, group or crew rather than one person. */
+  isGroup?: boolean;
+  /** How they describe themselves: "Duo", "Crew", "Collective". */
+  groupKind?: string | null;
   region: Taxon | null;
   genres: Taxon[];
   _count: { followers: number; songs: number };
@@ -112,6 +116,15 @@ export interface ArtistDetail extends ArtistCard {
   managed: boolean;
 }
 
+/** One side of a group link: who is in it, or which groups someone belongs to. */
+export interface Membership {
+  role: string | null;
+  since: number | null;
+  /** Set means they've left. */
+  until: number | null;
+  artist: ArtistCard;
+}
+
 export interface PlaylistCard {
   id: string;
   name: string;
@@ -143,7 +156,8 @@ export type HomeSection =
   | { id: string; kind: 'scenes'; title: string; subtitle?: string; seeAll?: SeeAll; items: Region[] }
   | { id: string; kind: 'artist-ranking'; title: string; subtitle?: string; seeAll?: SeeAll; items: ArtistCard[] }
   | { id: string; kind: 'shows'; title: string; subtitle?: string; seeAll?: SeeAll; items: ShowCard[] }
-  | { id: string; kind: 'posts'; title: string; subtitle?: string; seeAll?: SeeAll; items: (ArtistPost & { artist: ArtistRef })[] };
+  | { id: string; kind: 'posts'; title: string; subtitle?: string; seeAll?: SeeAll; items: (ArtistPost & { artist: ArtistRef })[] }
+  | { id: string; kind: 'events'; title: string; subtitle?: string; seeAll?: SeeAll; items: EventCard[] };
 
 export interface SeeAll {
   type: 'artists' | 'songs';
@@ -339,3 +353,40 @@ export const CHANGE_ACTION_LABEL: Record<ArtistChangeAction, string> = {
 };
 
 export const CHANGE_STATUS_LABEL: Record<ArtistChangeStatus, string> = { PENDING: 'In review', APPLIED: 'Live', REJECTED: 'Not approved' };
+
+// ---------- Live events ----------
+
+export type EventStatus = 'SCHEDULED' | 'POSTPONED' | 'CANCELLED';
+
+export interface EventCard {
+  id: string;
+  slug: string;
+  title: string;
+  /** Free text: "Festival", "Tour date", "Album launch". */
+  kind: string | null;
+  startsAt: string;
+  /** Set only for multi-day events. */
+  endsAt: string | null;
+  /** When true only the date is known, so the time is hidden. */
+  allDay: boolean;
+  venue: string | null;
+  posterUrl: string | null;
+  ticketUrl: string | null;
+  priceFrom: number | null;
+  status: EventStatus;
+  featured: boolean;
+  region: Taxon | null;
+  /** Billing order; the first is the headliner. */
+  lineup: { order: number; artist: ArtistRef }[];
+}
+
+export interface EventDetail extends EventCard {
+  description: string | null;
+  address: string | null;
+}
+
+export const EVENT_STATUS_LABEL: Record<EventStatus, string> = {
+  SCHEDULED: 'On',
+  POSTPONED: 'Postponed',
+  CANCELLED: 'Cancelled',
+};

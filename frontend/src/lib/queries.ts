@@ -9,6 +9,9 @@ import type {
   ArtistDetail,
   Genre,
   HomeResponse,
+  EventCard,
+  EventDetail,
+  Membership,
   Paged,
   PlaylistCard,
   PlaylistDetail,
@@ -28,6 +31,13 @@ export const useHome = () => useQuery({ queryKey: ['home'], queryFn: () => api<H
 
 export const useShows = () =>
   useQuery({ queryKey: ['shows'], queryFn: () => api<{ items: ShowCard[] }>('/shows'), staleTime: 5 * 60_000 });
+
+/** Live events. `when` is upcoming (default), past or all. */
+export const useEvents = (params: Record<string, string | number> = {}) =>
+  useQuery({ queryKey: ['events', params], queryFn: () => api<Paged<EventCard>>('/events', { query: params }), placeholderData: (prev) => prev });
+
+export const useEvent = (slug: string) =>
+  useQuery({ queryKey: ['event', slug], queryFn: () => api<{ event: EventDetail; related: EventCard[] }>(`/events/${slug}`) });
 
 export const useShow = (slug: string) =>
   useQuery({ queryKey: ['show', slug], queryFn: () => api<{ show: ShowDetail }>(`/shows/${slug}`) });
@@ -65,6 +75,14 @@ export const useArtist = (slug: string) =>
         appearances: ShowAppearance[];
         /** Latest Studio posts from the artist. */
         posts: ArtistPost[];
+        /** Upcoming dates this artist is on the bill for. */
+        events: EventCard[];
+        /** Who is in this group (empty for a solo artist). */
+        members: Membership[];
+        /** Groups this artist belongs to. */
+        memberOf: Membership[];
+        /** Each group they are in, with that group's best songs. */
+        groupWork: { group: ArtistCard; songs: SongCard[] }[];
       }>(
         `/artists/${slug}`,
       ),

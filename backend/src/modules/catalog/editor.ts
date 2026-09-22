@@ -124,6 +124,11 @@ export const artistSchema = z.object({
   verified: z.boolean().optional(),
   isProducer: z.boolean().optional(),
   featured: z.boolean().optional(),
+  /** A duo, group or crew. Its members are artists in their own right. */
+  isGroup: z.boolean().optional(),
+  groupKind: nullableText(40),
+  /** Member ids in billing order. Only meaningful when isGroup. */
+  memberIds: z.array(z.string().min(1)).max(30).optional(),
   regionSlug: z.string().nullish(),
   genreSlugs: z.array(z.string()).optional(),
   instagramUrl: instagramField,
@@ -135,8 +140,19 @@ export const artistSchema = z.object({
 });
 export type ArtistInput = z.output<typeof artistSchema>;
 
+/** A group can't contain itself, and every member has to exist. */
+async function checkMembers(memberIds: string[], groupId?: string) {
+  if (!memberIds.length) return;
+  if (groupId && memberIds.includes(groupId)) throw badRequest("A group can't be a member of itself");
+  const found = await prisma.artist.count({ where: { id: { in: memberIds } } });
+  if (found !== new Set(memberIds).size) throw badRequest('One of those members no longer exists');
+}
+
+const memberRows = (memberIds: string[]) => memberIds.map((memberId, order) => ({ memberId, order }));
+
 export async function createArtist(input: ArtistInput) {
-  const { slug, regionSlug, genreSlugs, handle, ...data } = input;
+  const { slug, regionSlug, genreSlugs, handle, memberIds, ...data } = input;
+  await checkMembers(memberIds ?? []);
   return prisma.artist.create({
     data: {
       ...data,
@@ -144,15 +160,17 @@ export async function createArtist(input: ArtistInput) {
       slug: await slugFor('artist', slug, data.name),
       regionId: await regionIdFor(regionSlug),
       genres: genreSlugs ? { connect: genreSlugs.map((s) => ({ slug: s })) } : undefined,
+      members: memberIds?.length ? { create: memberRows(memberIds) } : undefined,
     },
     select: artistCardSelect,
   });
 }
 
 export async function updateArtist(id: string, input: Partial<ArtistInput>) {
-  const { slug, regionSlug, genreSlugs, handle, ...data } = input;
+  const { slug, regionSlug, genreSlugs, handle, memberIds, ...data } = input;
   const current = await prisma.artist.findUnique({ where: { id }, select: { id: true, name: true, handle: true, instagramUrl: true } });
   if (!current) throw notFound('Artist');
+  if (memberIds) await checkMembers(memberIds, id);
 
   let nextHandle: string | undefined;
   if (handle) nextHandle = handle === current.handle ? undefined : await claimHandle(handle, id);
@@ -168,6 +186,8 @@ export async function updateArtist(id: string, input: Partial<ArtistInput>) {
       ...(slug && { slug: await slugFor('artist', slug, slug, id) }),
       ...(regionSlug !== undefined && { regionId: await regionIdFor(regionSlug) }),
       ...(genreSlugs && { genres: { set: genreSlugs.map((s) => ({ slug: s })) } }),
+      // The form always sends the full line-up, so it is replaced rather than merged.
+      ...(memberIds && { members: { deleteMany: {}, create: memberRows(memberIds) } }),
     },
     select: artistCardSelect,
   });

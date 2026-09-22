@@ -13,6 +13,8 @@ import { AlbumPage } from './pages/AlbumPage';
 import { SearchPage } from './pages/SearchPage';
 import { ScenesPage } from './pages/ScenesPage';
 import { ShowPage, ShowsPage } from './pages/ShowsPage';
+import { EventsPage } from './pages/EventsPage';
+import { EventPage } from './pages/EventPage';
 import { LoginPage, RegisterPage } from './pages/AuthPages';
 import { OnboardingPage } from './pages/TastePicker';
 import { LibraryPage } from './pages/LibraryPage';
@@ -65,6 +67,8 @@ export default function App() {
         <Route path="scenes" element={<ScenesPage />} />
         <Route path="shows" element={<ShowsPage />} />
         <Route path="shows/:slug" element={<ShowPage />} />
+        <Route path="events" element={<EventsPage />} />
+        <Route path="events/:slug" element={<EventPage />} />
         <Route path="playlists/:id" element={<PlaylistPage />} />
         <Route path="login" element={<LoginPage />} />
         <Route path="register" element={<RegisterPage />} />

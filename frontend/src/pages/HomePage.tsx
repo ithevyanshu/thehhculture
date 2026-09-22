@@ -6,6 +6,7 @@ import { toQuery } from '../lib/api';
 import { issueDate } from '../lib/format';
 import { ArtistTile, PlaylistTile, SongRow, SongTile, TrackList } from '../components/Cards';
 import { ShowTile } from '../components/ShowTile';
+import { EventTile } from '../components/EventCards';
 import { CoverCarousel } from '../components/CoverCarousel';
 import { PostCard } from '../components/PostCard';
 import { ErrorState, SPOT_COLORS, SectionHeader, SeeAll, Shelf, Spinner, spotText } from '../components/ui';
@@ -104,6 +105,14 @@ function SectionView({ section, kicker }: { section: HomeSection; kicker: string
         <Shelf {...common} seeAllTo="/shows" cols="grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
           {section.items.map((s) => (
             <ShowTile key={s.id} show={s} />
+          ))}
+        </Shelf>
+      );
+    case 'events':
+      return (
+        <Shelf {...common} seeAllTo="/events" cols="grid-cols-2 sm:grid-cols-3 xl:grid-cols-5">
+          {section.items.map((e) => (
+            <EventTile key={e.id} event={e} />
           ))}
         </Shelf>
       );

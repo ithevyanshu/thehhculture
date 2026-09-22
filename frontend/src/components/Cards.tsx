@@ -35,6 +35,7 @@ export function ArtistCredits({ artist, features, className = '' }: { artist: Ar
 /** Taped-up polaroid. */
 export function ArtistTile({ artist, showFollow = true, rank }: { artist: ArtistCard; showFollow?: boolean; rank?: number }) {
   const meta = [
+    artist.isGroup ? (artist.groupKind || 'Group') : null,
     artist.region?.name,
     artist.views ? plural(artist.views.week, 'view') + ' this week' : plural(artist._count.followers, 'follower'),
   ];

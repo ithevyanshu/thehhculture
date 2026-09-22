@@ -372,6 +372,8 @@ const emptyArtist = {
   verified: false,
   featured: false,
   isProducer: false,
+  isGroup: false,
+  groupKind: '',
   instagramUrl: '',
   youtubeUrl: '',
   spotifyUrl: '',
@@ -400,12 +402,17 @@ export function ArtistForm({ id, onDone, studio }: { id: string | null; onDone: 
   const genres = useGenres();
   const [form, setForm] = useState(emptyArtist);
   const [initial, setInitial] = useState(emptyArtist);
+  const [members, setMembers] = useState<HandleRef[]>([]);
   const [loaded, setLoaded] = useState(!id && !studio);
   const { error, busy, run } = useSubmit(onDone);
 
   useEffect(() => {
     if (!id && !studio) return;
-    type Raw = Record<string, unknown> & { genres: { slug: string }[]; region: { slug: string } | null };
+    type Raw = Record<string, unknown> & {
+      genres: { slug: string }[];
+      region: { slug: string } | null;
+      members?: { member: HandleRef }[];
+    };
     const load = studio ? api<{ artist: Raw }>('/studio') : api<{ artist: Raw }>(`/admin/artists/${id}`);
     load.then(({ artist }) => {
       const next = { ...emptyArtist };
@@ -416,6 +423,7 @@ export function ArtistForm({ id, onDone, studio }: { id: string | null; onDone: 
       next.regionSlug = artist.region?.slug ?? '';
       setForm(next);
       setInitial(next);
+      setMembers((artist.members ?? []).map((m) => m.member));
       setLoaded(true);
     });
   }, [id, studio]);
@@ -434,7 +442,14 @@ export function ArtistForm({ id, onDone, studio }: { id: string | null; onDone: 
       run(() => api('/studio/profile', { method: 'PATCH', body }));
       return;
     }
-    const body = { ...form, spotifyId: form.spotifyId ? spotifyId(form.spotifyId) : '', slug: form.slug || undefined, regionSlug: form.regionSlug || null };
+    const body = {
+      ...form,
+      spotifyId: form.spotifyId ? spotifyId(form.spotifyId) : '',
+      slug: form.slug || undefined,
+      regionSlug: form.regionSlug || null,
+      // Unticking "group" clears the line-up rather than leaving orphaned members behind.
+      memberIds: form.isGroup ? members.map((m) => m.id) : [],
+    };
     run(() => api(id ? `/admin/artists/${id}` : '/admin/artists', { method: id ? 'PATCH' : 'POST', body }));
   };
 
@@ -497,6 +512,19 @@ export function ArtistForm({ id, onDone, studio }: { id: string | null; onDone: 
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={form.isProducer} onChange={(e) => setForm({ ...form, isProducer: e.target.checked })} /> Producer / beat maker
           </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={form.isGroup} onChange={(e) => setForm({ ...form, isGroup: e.target.checked })} /> Group / duo / crew
+          </label>
+        </div>
+      )}
+      {!studio && form.isGroup && (
+        <div className="grid gap-4 border-2 border-dashed border-ink/30 p-3 sm:grid-cols-[10rem_1fr]">
+          <Field label="Kind" hint="Duo, Crew…">
+            <input className="input" value={form.groupKind} onChange={set('groupKind')} placeholder="Duo" maxLength={40} />
+          </Field>
+          <Field label="Members" hint="In billing order. Each member keeps their own profile; the group keeps the songs.">
+            <HandleInput value={members} onChange={setMembers} placeholder="Type a name or @handle…" />
+          </Field>
         </div>
       )}
       <div className="grid gap-4 sm:grid-cols-2">

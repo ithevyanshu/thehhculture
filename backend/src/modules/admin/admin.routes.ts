@@ -9,6 +9,7 @@ import { suggestionsAdminRouter } from './suggestions.admin.routes';
 import { trendingIds } from '../catalog/views';
 import { usersAdminRouter } from './users.admin.routes';
 import { showsAdminRouter } from './shows.admin.routes';
+import { eventsAdminRouter } from './events.admin.routes';
 import { studioAdminRouter } from './studio.admin.routes';
 import { importAdminRouter } from './import.admin.routes';
 import { sheetsAdminRouter } from './sheets.admin.routes';
@@ -37,6 +38,7 @@ adminRouter.use(siteAdminRouter);
 adminRouter.use(usersAdminRouter);
 adminRouter.use(suggestionsAdminRouter);
 adminRouter.use(showsAdminRouter);
+adminRouter.use(eventsAdminRouter);
 adminRouter.use(studioAdminRouter);
 adminRouter.use(importAdminRouter);
 adminRouter.use(sheetsAdminRouter);
@@ -80,7 +82,12 @@ adminRouter.get('/stats', async (_req, res) => {
 adminRouter.get('/artists/:id', async (req, res) => {
   const artist = await prisma.artist.findUnique({
     where: { id: param(req, 'id') },
-    include: { genres: { select: { slug: true } }, region: { select: { slug: true } } },
+    include: {
+      genres: { select: { slug: true } },
+      region: { select: { slug: true } },
+      // The group form edits the line-up, so it needs it in billing order.
+      members: { orderBy: { order: 'asc' }, select: { member: { select: { id: true, slug: true, name: true, handle: true } } } },
+    },
   });
   if (!artist) throw notFound('Artist');
   res.json({ artist });

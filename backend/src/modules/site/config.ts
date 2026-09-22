@@ -154,6 +154,7 @@ export const BUILTIN_SECTIONS = [
   { key: 'scenes', label: 'Scenes (cities)', audience: 'everyone' },
   { key: 'trending-artists', label: 'Most viewed this week (artist ranking)', audience: 'everyone' },
   { key: 'shows', label: 'Rap shows (latest winners)', audience: 'everyone' },
+  { key: 'events', label: "What's on (upcoming events)", audience: 'everyone' },
   { key: 'artist-posts', label: 'From the artists (Studio posts)', audience: 'everyone' },
   { key: 'recent', label: 'Jump back in (recently viewed)', audience: 'signed-in' },
   { key: 'following', label: 'New from artists you follow', audience: 'signed-in' },

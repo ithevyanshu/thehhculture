@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { prisma } from '../../lib/prisma';
 import { notFound, pageMeta, paginate, paginationSchema, parse, param } from '../../lib/http';
 import { currentUser, optionalAuth, requireAuth } from '../../middleware/auth';
+import { upcomingForArtists } from '../events/events.routes';
 import {
   albumCardSelect,
   artistCardSelect,
@@ -22,12 +23,14 @@ const listQuery = paginationSchema.extend({
   region: z.string().optional(),
   featured: z.enum(['true', 'false']).optional(),
   producer: z.enum(['true', 'false']).optional(),
+  /** solo hides duos and crews; group shows only them. */
+  type: z.enum(['all', 'solo', 'group']).default('all'),
   /** trending = profile clicks in the last 7 days; popular = followers */
   sort: z.enum(['trending', 'popular', 'name', 'new']).default('popular'),
 });
 
 artistsRouter.get('/', optionalAuth, async (req, res) => {
-  const { page, limit, q: rawQ, genre, region, featured, producer, sort } = parse(listQuery, req.query);
+  const { page, limit, q: rawQ, genre, region, featured, producer, sort, type } = parse(listQuery, req.query);
   const q = rawQ?.replace(/^@/, ''); // "@krsna" searches by handle
 
   const where: Prisma.ArtistWhereInput = {
@@ -40,6 +43,7 @@ artistsRouter.get('/', optionalAuth, async (req, res) => {
       ],
     }),
     ...(producer && { isProducer: producer === 'true' }),
+    ...(type !== 'all' && { isGroup: type === 'group' }),
     ...(genre && { genres: { some: { slug: genre } } }),
     ...(region && { region: { slug: region } }),
     ...(featured && { featured: featured === 'true' }),
@@ -89,6 +93,15 @@ artistsRouter.get('/:slug', optionalAuth, async (req, res) => {
       managedById: true,
       albums: { select: albumCardSelect, orderBy: { releaseDate: 'desc' } },
       posts: { orderBy: { createdAt: 'desc' }, take: 5, select: { id: true, text: true, linkUrl: true, createdAt: true } },
+      // Both sides of group membership: who is in this group, and which groups it belongs to.
+      members: {
+        orderBy: { order: 'asc' },
+        select: { role: true, since: true, until: true, member: { select: artistCardSelect } },
+      },
+      memberOf: {
+        orderBy: { group: { name: 'asc' } },
+        select: { role: true, since: true, until: true, group: { select: artistCardSelect } },
+      },
     },
   });
   if (!artist) throw notFound('Artist');
@@ -157,8 +170,39 @@ artistsRouter.get('/:slug', optionalAuth, async (req, res) => {
     withLikeFlags(userId, produced),
   ]);
 
-  const { managedById, posts, ...flaggedRest } = flagged;
+  const { managedById, posts, members, memberOf, ...flaggedRest } = flagged;
+
+  /**
+   * A group holds the catalog, so a member's own page would otherwise read as empty.
+   * Each group they're in contributes its best songs, credited to the group.
+   */
+  const groupWork = await Promise.all(
+    memberOf.map(async (m) => ({
+      group: m.group,
+      songs: await withLikeFlags(
+        userId,
+        await prisma.song.findMany({
+          where: { artistId: m.group.id },
+          orderBy: [{ likes: { _count: 'desc' } }, { releaseDate: { sort: 'desc', nulls: 'last' } }],
+          take: 8,
+          select: songCardSelect,
+        }),
+      ),
+    })),
+  );
+
+  // Members and groups are artist cards, so they need the same follow flags as any other.
+  const [memberCards, groupCards] = await Promise.all([
+    withFollowFlags(userId, members.map((m) => m.member)),
+    withFollowFlags(userId, memberOf.map((m) => m.group)),
+  ]);
+
+  const events = await upcomingForArtists([artist.id], 6);
   res.json({
+    events,
+    members: members.map((m, i) => ({ role: m.role, since: m.since, until: m.until, artist: memberCards[i] })),
+    memberOf: memberOf.map((m, i) => ({ role: m.role, since: m.since, until: m.until, artist: groupCards[i] })),
+    groupWork,
     artist: { ...flaggedRest, managed: !!managedById, stats: { followers: artist._count.followers, songs: artist._count.songs, likes: likeTotal } },
     posts,
     topSongs: top,

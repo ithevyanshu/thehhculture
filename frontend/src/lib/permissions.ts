@@ -7,6 +7,7 @@ export const PERMISSIONS = [
   { value: 'albums', label: 'Albums' },
   { value: 'songs', label: 'Songs' },
   { value: 'shows', label: 'Shows' },
+  { value: 'events', label: 'Events' },
   { value: 'taxonomy', label: 'Genres & cities' },
   { value: 'suggestions', label: 'Suggestions' },
   { value: 'users', label: 'Users (regular users only)' },

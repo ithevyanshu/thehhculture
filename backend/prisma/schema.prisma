@@ -158,6 +158,7 @@ model Region {
 
   artists Artist[]
   fans    User[]   @relation("UserFavoriteRegions")
+  events  Event[]
 }
 
 // ---------- Catalog ----------
@@ -177,6 +178,10 @@ model Artist {
   activeSince  Int?
   verified     Boolean  @default(false)
   featured     Boolean  @default(false)
+  /// A duo, group or crew rather than one person: the page leads with its members.
+  isGroup      Boolean  @default(false)
+  /// What kind, in their own words: "Duo", "Crew", "Collective". Shown on the card.
+  groupKind    String?
   viewCount    Int      @default(0) // all-time de-duplicated profile opens
   isProducer   Boolean  @default(false) // makes beats; shown with "Prod." credits
   regionId     String?
@@ -205,8 +210,35 @@ model Artist {
   changes     ArtistChange[]
   imports     ImportBatch[]
   posts       ArtistPost[]
+  lineups     EventArtist[]
+  /// People in this group (empty for a solo artist).
+  members     ArtistMember[] @relation("GroupMembers")
+  /// Groups this artist belongs to.
+  memberOf    ArtistMember[] @relation("MemberGroups")
 
   @@index([regionId])
+}
+
+/**
+ * Who is in a group. Both sides are artists, so a member keeps their own profile and a
+ * crew can contain a duo. The group holds the catalog; membership is just the link.
+ */
+model ArtistMember {
+  id       String  @id @default(cuid())
+  groupId  String
+  memberId String
+  /// Billing order within the group.
+  order    Int     @default(0)
+  /// Optional: "Founder", "MC", "Producer".
+  role     String?
+  /// Years, when known. `until` set means a former member.
+  since    Int?
+  until    Int?
+  group    Artist  @relation("GroupMembers", fields: [groupId], references: [id], onDelete: Cascade)
+  member   Artist  @relation("MemberGroups", fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, memberId])
+  @@index([memberId])
 }
 
 // Per-day click counts, used for "trending" (views in the last 7 days).
@@ -341,6 +373,59 @@ model ShowAppearance {
   artist   Artist     @relation(fields: [artistId], references: [id], onDelete: Cascade)
 
   @@unique([seasonId, artistId, role])
+  @@index([artistId])
+}
+
+// ---------- Live events ----------
+
+enum EventStatus {
+  SCHEDULED
+  POSTPONED
+  CANCELLED
+}
+
+/** A dated live thing: a gig, festival, tour date, battle or launch. */
+model Event {
+  id          String      @id @default(cuid())
+  slug        String      @unique
+  title       String
+  description String?
+  /** Kind of night, free text so it can be anything: "Festival", "Tour date", "Album launch". */
+  kind        String?
+  startsAt    DateTime
+  /** Set only for multi-day events; the list shows a date range when it is. */
+  endsAt      DateTime?
+  /** True when only the date is known, so clients hide the time. */
+  allDay      Boolean     @default(false)
+  venue       String?
+  address     String?
+  regionId    String?
+  region      Region?     @relation(fields: [regionId], references: [id], onDelete: SetNull)
+  posterUrl   String?
+  ticketUrl   String?
+  /** Cheapest ticket in rupees, for the "from ₹x" line. */
+  priceFrom   Int?
+  status      EventStatus @default(SCHEDULED)
+  featured    Boolean     @default(false)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  lineup EventArtist[]
+
+  @@index([startsAt])
+  @@index([regionId])
+}
+
+/** Who is playing, in billing order (0 is the headliner). */
+model EventArtist {
+  id       String @id @default(cuid())
+  eventId  String
+  artistId String
+  order    Int    @default(0)
+  event    Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  artist   Artist @relation(fields: [artistId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, artistId])
   @@index([artistId])
 }
 

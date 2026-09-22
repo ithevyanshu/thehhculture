@@ -11,6 +11,9 @@ export const artistCardSelect = {
   imageUrl: true,
   verified: true,
   isProducer: true,
+  /** Duo, group or crew: the card and page lead with its members. */
+  isGroup: true,
+  groupKind: true,
   instagramUrl: true,
   region: { select: { slug: true, name: true } },
   genres: { select: { slug: true, name: true } },

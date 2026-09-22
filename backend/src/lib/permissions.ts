@@ -2,7 +2,7 @@
  * Sub-admin permissions: one per admin section. Full admins have them all; sub-admins
  * have only what an admin granted (User.permissions).
  */
-export const PERMISSIONS = ['artists', 'albums', 'songs', 'taxonomy', 'shows', 'frontPage', 'suggestions', 'users', 'studio'] as const;
+export const PERMISSIONS = ['artists', 'albums', 'songs', 'taxonomy', 'shows', 'events', 'frontPage', 'suggestions', 'users', 'studio'] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
 type Rule = { method?: string; path: RegExp; allow: Permission[] | 'staff' };
@@ -23,6 +23,7 @@ const RULES: Rule[] = [
   { path: /^\/songs(\/|$)/, allow: ['songs'] },
   { path: /^\/(genres|regions)(\/|$)/, allow: ['taxonomy'] },
   { path: /^\/(shows|seasons)(\/|$)/, allow: ['shows'] },
+  { path: /^\/events(\/|$)/, allow: ['events'] },
   { path: /^\/site-config(\/|$)/, allow: ['frontPage'] },
   { path: /^\/suggestions(\/|$)/, allow: ['suggestions'] },
   { path: /^\/users(\/|$)/, allow: ['users'] },

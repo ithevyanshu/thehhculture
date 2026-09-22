@@ -17,6 +17,7 @@ const nav = [
   { to: '/songs', label: 'Songs' },
   { to: '/scenes', label: 'Scenes' },
   { to: '/shows', label: 'Shows' },
+  { to: '/events', label: 'Events' },
   { to: '/library', label: 'Library' },
 ];
 

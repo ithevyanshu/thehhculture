@@ -13,6 +13,7 @@ import { meRouter } from './modules/me/me.routes';
 import { playlistsRouter } from './modules/playlists/playlists.routes';
 import { suggestionsRouter } from './modules/suggestions/suggestions.routes';
 import { showsRouter } from './modules/shows/shows.routes';
+import { eventsRouter } from './modules/events/events.routes';
 import { homeRouter } from './modules/home/home.routes';
 import { siteRouter } from './modules/site/site.routes';
 import { adminRouter } from './modules/admin/admin.routes';
@@ -49,6 +50,7 @@ export function createApp() {
   api.use('/playlists', playlistsRouter);
   api.use('/suggestions', suggestionsRouter);
   api.use('/shows', showsRouter);
+  api.use('/events', eventsRouter);
   api.use('/studio', studioRouter);
   api.use('/admin', adminRouter);
   app.use('/api/v1', api);

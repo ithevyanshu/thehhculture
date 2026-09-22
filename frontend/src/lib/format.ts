@@ -2,6 +2,39 @@ export function year(date: string | null | undefined) {
   return date ? new Date(date).getUTCFullYear() : null;
 }
 
+// ---------- Event dates ----------
+
+const DAY = { weekday: 'short', day: 'numeric', month: 'short' } as const;
+
+/** "Sat 12 Oct", with the year once it isn't this one. */
+export function eventDay(iso: string) {
+  const d = new Date(iso);
+  const opts = d.getFullYear() === new Date().getFullYear() ? DAY : { ...DAY, year: 'numeric' as const };
+  return d.toLocaleDateString('en-IN', opts);
+}
+
+export function eventTime(iso: string) {
+  return new Date(iso).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' });
+}
+
+/** One line for when something is on: a single day, a range, and the time when known. */
+export function eventWhen(e: { startsAt: string; endsAt?: string | null; allDay?: boolean }) {
+  const start = eventDay(e.startsAt);
+  const sameDay = e.endsAt && new Date(e.endsAt).toDateString() === new Date(e.startsAt).toDateString();
+  if (e.endsAt && !sameDay) return `${start} – ${eventDay(e.endsAt)}`;
+  return e.allDay ? start : `${start}, ${eventTime(e.startsAt)}`;
+}
+
+/** "Tonight", "Tomorrow", "In 3 days" — null once it's far enough out to not matter. */
+export function eventCountdown(iso: string) {
+  const midnight = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const days = Math.round((midnight(new Date(iso)) - midnight(new Date())) / 86_400_000);
+  if (days < 0) return null;
+  if (days === 0) return 'Today';
+  if (days === 1) return 'Tomorrow';
+  return days <= 14 ? `In ${days} days` : null;
+}
+
 export function duration(sec: number | null | undefined) {
   if (!sec) return null;
   const m = Math.floor(sec / 60);

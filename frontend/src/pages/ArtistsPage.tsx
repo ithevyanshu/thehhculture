@@ -8,12 +8,13 @@ export function ArtistsPage() {
   const genre = params.get('genre') ?? undefined;
   const region = params.get('region') ?? undefined;
   const sort = params.get('sort') ?? 'trending';
+  const type = params.get('type') ?? 'all';
   const q = params.get('q') ?? '';
   const page = Number(params.get('page') ?? 1);
 
   const genres = useGenres();
   const regions = useRegions();
-  const { data, isLoading, error, refetch, isFetching } = useArtists({ genre, region, sort, q, page, limit: 24 });
+  const { data, isLoading, error, refetch, isFetching } = useArtists({ genre, region, sort, q, page, limit: 24, ...(type !== 'all' && { type }) });
 
   const update = (patch: Record<string, string | undefined>) => {
     const next = new URLSearchParams(params);
@@ -49,6 +50,20 @@ export function ArtistsPage() {
         </div>
       </div>
 
+      <div className="mb-3 flex items-center gap-3">
+        <span className="w-16 shrink-0 text-xs font-semibold tracking-wider text-dim uppercase">Who</span>
+        <div className="flex gap-2">
+          {[
+            { value: 'all', label: 'Everyone' },
+            { value: 'solo', label: 'Solo' },
+            { value: 'group', label: 'Groups & crews' },
+          ].map((t) => (
+            <button key={t.value} className={`chip ${type === t.value ? 'chip-active' : ''}`} onClick={() => update({ type: t.value === 'all' ? undefined : t.value })}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
       <div className="mb-3 flex items-center gap-3">
         <span className="w-16 shrink-0 text-xs font-semibold tracking-wider text-dim uppercase">Sound</span>
         <FilterChips items={genres.data?.items ?? []} value={genre} onChange={(v) => update({ genre: v })} />
