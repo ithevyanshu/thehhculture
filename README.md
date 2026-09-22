@@ -80,6 +80,7 @@ The two apps share no code. The backend is a plain JSON API that any client can 
   - Stats: followers (7 and 30 days), profile views (30-day chart), likes and playlist adds per song.
   - Admins choose per kind of change (profile, releases, posts) whether it goes live immediately or waits in the review queue, where they see current and proposed values and approve or reject with a note. Every change is logged either way.
   - Posts show on the artist page ("Updates", with an "Official" tag on managed profiles) and in the "From the artists" home block.
+- **Installable app (PWA)**: Chrome on Android and Safari on iOS offer "Add to home screen". It opens full screen with its own icon, the shell loads from the device (so it starts instantly and works with no connection), and fonts and cover art are cached. API responses are deliberately not cached — they are per-user and change often.
 - **Roles**: `USER`, `ARTIST`, `SUB_ADMIN`, `ADMIN`.
 
 ## Getting started
