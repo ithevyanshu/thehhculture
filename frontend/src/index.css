@@ -5,6 +5,13 @@
  * halftone photos, tape and stickers. Sharp corners, hard offset shadows.
  */
 @theme {
+  /*
+   * Extra breakpoint below Tailwind's `sm`, for the cover story only: big phones get the
+   * headline-top / picture-left / text-right layout instead of waiting for `md`. Defined
+   * in rem like the built-in ones, so it scales with the reader's font size.
+   */
+  --breakpoint-xs: 28rem; /* 450px at the default 16px root */
+
   --color-paper: #f2ecdf; /* page background */
   --color-ink: #16130f; /* black ink: text, borders, solid fills */
   --color-bone: #16130f; /* primary text (kept as an alias of ink) */
