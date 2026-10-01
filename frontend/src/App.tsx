@@ -15,6 +15,7 @@ import { ScenesPage } from './pages/ScenesPage';
 import { ShowPage, ShowsPage } from './pages/ShowsPage';
 import { EventsPage } from './pages/EventsPage';
 import { EventPage } from './pages/EventPage';
+import { StoryPage } from './pages/StoryPage';
 import { LoginPage, RegisterPage } from './pages/AuthPages';
 import { OnboardingPage } from './pages/TastePicker';
 import { LibraryPage } from './pages/LibraryPage';
@@ -69,6 +70,7 @@ export default function App() {
         <Route path="shows/:slug" element={<ShowPage />} />
         <Route path="events" element={<EventsPage />} />
         <Route path="events/:slug" element={<EventPage />} />
+        <Route path="story/:slug" element={<StoryPage />} />
         <Route path="playlists/:id" element={<PlaylistPage />} />
         <Route path="login" element={<LoginPage />} />
         <Route path="register" element={<RegisterPage />} />

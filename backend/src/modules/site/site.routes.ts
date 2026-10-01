@@ -2,6 +2,8 @@ import { Router } from 'express';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 import { currentIssue, getSiteConfig, type SiteConfig } from './config';
+import { notFound, param } from '../../lib/http';
+import { artistCardSelect } from '../catalog/selects';
 
 /** Public site chrome: announcement banner, ticker and issue number. Cheap and cacheable by clients. */
 export const siteRouter = Router();
@@ -64,4 +66,39 @@ siteRouter.get('/', async (_req, res) => {
 
   res.set('Cache-Control', 'public, max-age=30');
   res.json({ announcement, ticker, issue: currentIssue(config.issue) });
+});
+
+/**
+ * One news story from the cover carousel, by its slug.
+ *
+ * Stories live inside the cover story setting rather than their own table, so a story
+ * exists exactly as long as its slide does. Slides outside their date window are still
+ * readable by direct link — the window only controls the carousel.
+ */
+siteRouter.get('/stories/:slug', async (req, res) => {
+  const { slides } = (await getSiteConfig()).coverStory;
+  const slug = param(req, 'slug');
+  const story = slides.find((s) => s.type === 'news' && s.slug === slug);
+  if (!story || story.type !== 'news') throw notFound('Story');
+
+  const artists = story.artistIds.length
+    ? await prisma.artist.findMany({ where: { id: { in: story.artistIds } }, select: artistCardSelect })
+    : [];
+  // Keep the order the editor chose rather than whatever the database returns.
+  const byId = new Map(artists.map((a) => [a.id, a]));
+
+  res.set('Cache-Control', 'public, max-age=30');
+  res.json({
+    story: {
+      slug: story.slug,
+      kicker: story.kicker,
+      headline: story.headline,
+      body: story.body,
+      article: story.article,
+      imageUrl: story.imageUrl,
+      linkUrl: story.linkUrl,
+      linkLabel: story.linkLabel,
+      artists: story.artistIds.flatMap((id) => (byId.has(id) ? [byId.get(id)!] : [])),
+    },
+  });
 });
