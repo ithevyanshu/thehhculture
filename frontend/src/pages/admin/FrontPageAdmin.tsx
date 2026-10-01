@@ -71,7 +71,8 @@ interface SectionItem {
   visible: boolean;
   title: string | null;
   subtitle: string | null;
-  custom?: { kind: 'songs' | 'artists' | 'albums'; ids: string[] };
+  /** Releases ids are tagged: "song:<id>" or "album:<id>". Artists stay bare ids. */
+  custom?: { kind: 'releases' | 'artists'; ids: string[] };
 }
 interface Chart {
   title: string | null;
@@ -270,41 +271,59 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
   );
 }
 
-/** Type-ahead search for a song or artist. */
+/** A picked reference: artists are bare, releases say whether they're a song or an album. */
+type PickRef = (SongRef | AlbumRef) & { type: 'song' | 'album' };
+
+/** Type-ahead search. 'release' searches songs and albums together and labels each. */
 function Picker({
   kind,
   onPick,
   placeholder,
   artistSlug,
 }: {
-  kind: 'song' | 'artist' | 'album';
-  onPick: (ref: SongRef | ArtistRef) => void;
+  kind: 'song' | 'artist' | 'release';
+  onPick: (ref: SongRef | ArtistRef | PickRef) => void;
   placeholder?: string;
   artistSlug?: string;
 }) {
   const [q, setQ] = useState('');
   const enabled = q.trim().length > 0 || !!artistSlug;
-  const songs = useSongs({ q, artist: artistSlug, limit: 8, sort: 'popular' }, kind === 'song' && enabled);
+  const wantsReleases = kind === 'song' || kind === 'release';
+  const songs = useSongs({ q, artist: artistSlug, limit: 6, sort: 'popular' }, wantsReleases && enabled);
   const artists = useArtists({ q, limit: 8 }, kind === 'artist' && enabled);
+  // No public album index, so the editor reads the admin list.
   const albums = useQuery({
     queryKey: ['admin', 'albums', q],
     queryFn: () => api<{ items: AlbumCard[] }>('/admin/albums', { query: { q } }),
-    enabled: kind === 'album' && enabled,
+    enabled: kind === 'release' && enabled,
   });
   const [open, setOpen] = useState(false);
 
-  const results: (SongRef | ArtistRef | AlbumRef)[] =
-    kind === 'song'
-      ? (songs.data?.items ?? []).map((s) => ({ id: s.id, slug: s.slug, title: s.title, coverUrl: s.coverUrl ?? s.album?.coverUrl ?? null, artistName: s.artist.name }))
-      : kind === 'album'
-        ? (albums.data?.items ?? []).slice(0, 8).map((a) => ({ id: a.id, slug: a.slug, title: a.title, coverUrl: a.coverUrl, artistName: a.artist.name }))
-        : (artists.data?.items ?? []).map((a) => ({ id: a.id, slug: a.slug, name: a.name, imageUrl: a.imageUrl }));
+  const songHits: PickRef[] = (songs.data?.items ?? []).map((s) => ({
+    type: 'song',
+    id: s.id,
+    slug: s.slug,
+    title: s.title,
+    coverUrl: s.coverUrl ?? s.album?.coverUrl ?? null,
+    artistName: s.artist.name,
+  }));
+  const albumHits: PickRef[] = (albums.data?.items ?? [])
+    .slice(0, 5)
+    .map((a) => ({ type: 'album', id: a.id, slug: a.slug, title: a.title, coverUrl: a.coverUrl, artistName: a.artist.name }));
+
+  // Albums lead: there are far fewer of them, so they would otherwise never surface.
+  const results: (PickRef | ArtistRef)[] =
+    kind === 'artist'
+      ? (artists.data?.items ?? []).map((a) => ({ id: a.id, slug: a.slug, name: a.name, imageUrl: a.imageUrl }))
+      : kind === 'release'
+        ? [...albumHits, ...songHits]
+        : songHits;
 
   return (
     <div className="relative">
       <input
         className="input"
-        placeholder={placeholder ?? (kind === 'song' ? 'Search songs to add…' : kind === 'album' ? 'Search albums to add…' : 'Search artists…')}
+        placeholder={placeholder ?? (kind === 'artist' ? 'Search artists…' : kind === 'release' ? 'Search songs and albums to add…' : 'Search songs to add…')}
         value={q}
         onFocus={() => setOpen(true)}
         onBlur={() => setTimeout(() => setOpen(false), 150)}
@@ -330,6 +349,11 @@ function Picker({
                 <div className="size-8 shrink-0 border border-ink">
                   <Artwork src={'title' in r ? r.coverUrl : r.imageUrl} name={'title' in r ? r.title : r.name} seed={r.slug} live />
                 </div>
+                {'type' in r && (
+                  <span className={`mono shrink-0 border border-ink px-1.5 py-0.5 !text-[10px] ${r.type === 'album' ? 'bg-neon' : 'bg-surface-2'}`}>
+                    {r.type === 'album' ? 'Album' : 'Song'}
+                  </span>
+                )}
                 <span className="truncate text-sm font-semibold">{'title' in r ? r.title : r.name}</span>
                 {'artistName' in r && <span className="mono ml-auto shrink-0 text-muted">{r.artistName}</span>}
               </button>
@@ -341,23 +365,39 @@ function Picker({
   );
 }
 
-function RefLabel({ id, kind, refs }: { id: string; kind: 'song' | 'artist' | 'album'; refs: Refs }) {
-  if (kind === 'song') {
-    const s = refs.songs[id];
-    return s ? (
-      <span className="truncate">
-        <b className="uppercase">{s.title}</b> <span className="text-muted">- {s.artistName}</span>
-      </span>
-    ) : (
-      <span className="text-red">Missing song</span>
-    );
+/** "Song" / "Album" tag, so a mixed list says what each row is at a glance. */
+function TypeTag({ type }: { type: 'song' | 'album' }) {
+  return (
+    <span className={`mono shrink-0 border border-ink px-1.5 py-0.5 !text-[10px] ${type === 'album' ? 'bg-neon' : 'bg-surface-2'}`}>
+      {type === 'album' ? 'Album' : 'Song'}
+    </span>
+  );
+}
+
+function RefLabel({ id, kind, refs }: { id: string; kind: 'song' | 'artist' | 'release'; refs: Refs }) {
+  if (kind === 'artist') {
+    const a = refs.artists[id];
+    return a ? <b className="truncate uppercase">{a.name}</b> : <span className="text-red">Missing artist</span>;
   }
-  const a = refs.artists[id];
-  return a ? <b className="truncate uppercase">{a.name}</b> : <span className="text-red">Missing artist</span>;
+
+  // Release ids carry their type; a plain song picker (ticker, chart) passes a bare id.
+  const [prefix, rest] = id.includes(':') ? id.split(':') : ['song', id];
+  const type = prefix === 'album' ? ('album' as const) : ('song' as const);
+  const row = type === 'album' ? refs.albums?.[rest] : refs.songs[rest];
+  return row ? (
+    <span className="flex min-w-0 items-center gap-2">
+      {kind === 'release' && <TypeTag type={type} />}
+      <span className="truncate">
+        <b className="uppercase">{row.title}</b> <span className="text-muted">- {row.artistName}</span>
+      </span>
+    </span>
+  ) : (
+    <span className="text-red">Missing {type}</span>
+  );
 }
 
 /** Ordered list of ids with move / remove controls. */
-function IdList({ ids, kind, refs, onChange, numbered }: { ids: string[]; kind: 'song' | 'artist' | 'album'; refs: Refs; onChange: (ids: string[]) => void; numbered?: boolean }) {
+function IdList({ ids, kind, refs, onChange, numbered }: { ids: string[]; kind: 'song' | 'artist' | 'release'; refs: Refs; onChange: (ids: string[]) => void; numbered?: boolean }) {
   if (!ids.length) return <p className="text-sm text-muted italic">Nothing added yet.</p>;
   return (
     <ol className="border-2 border-ink">
@@ -1219,7 +1259,7 @@ function SectionsPanel({
 }) {
   const [items, setItems] = useState(initial);
   const dialog = useDialog();
-  const [draft, setDraft] = useState<{ title: string; kind: 'songs' | 'artists' | 'albums' }>({ title: '', kind: 'songs' });
+  const [draft, setDraft] = useState<{ title: string; kind: 'releases' | 'artists' }>({ title: '', kind: 'releases' });
   const { save, saving, status } = useSaveSetting<{ items: SectionItem[] }>('sections');
   const meta = Object.fromEntries(builtins.map((b) => [b.key, b]));
   const update = (i: number, patch: Partial<SectionItem>) => setItems(items.map((it, j) => (j === i ? { ...it, ...patch } : it)));
@@ -1243,7 +1283,7 @@ function SectionsPanel({
                 <span className="display w-8 text-2xl">{String(i + 1).padStart(2, '0')}</span>
                 <div className="min-w-48 flex-1">
                   <p className="mono text-muted">
-                    {custom ? `Curated ${custom.kind}` : b?.label ?? item.key}
+                    {custom ? (custom.kind === 'releases' ? 'Curated songs & albums' : 'Curated artists') : (b?.label ?? item.key)}
                     {b?.audience === 'signed-in' && <span className="ml-2 bg-neon px-1 text-ink">signed-in only</span>}
                   </p>
                   {item.key !== 'taste' && (
@@ -1286,15 +1326,17 @@ function SectionsPanel({
                   />
                   <IdList
                     ids={custom.ids}
-                    kind={custom.kind === 'songs' ? 'song' : custom.kind === 'albums' ? 'album' : 'artist'}
+                    kind={custom.kind === 'releases' ? 'release' : 'artist'}
                     refs={refs}
                     onChange={(ids) => update(i, { custom: { ...custom, ids } })}
                   />
                   <Picker
-                    kind={custom.kind === 'songs' ? 'song' : custom.kind === 'albums' ? 'album' : 'artist'}
+                    kind={custom.kind === 'releases' ? 'release' : 'artist'}
                     onPick={(r) => {
-                      addRef(r, custom.kind === 'albums' ? 'album' : undefined);
-                      if (!custom.ids.includes(r.id)) update(i, { custom: { ...custom, ids: [...custom.ids, r.id] } });
+                      // Releases remember which they are; artists stay bare ids.
+                      const ref = 'type' in r ? `${r.type}:${r.id}` : r.id;
+                      addRef(r, 'type' in r && r.type === 'album' ? 'album' : undefined);
+                      if (!custom.ids.includes(ref)) update(i, { custom: { ...custom, ids: [...custom.ids, ref] } });
                     }}
                   />
                 </div>
@@ -1312,8 +1354,7 @@ function SectionsPanel({
           value={draft.kind}
           onChange={(kind) => setDraft({ ...draft, kind })}
           options={[
-            { value: 'songs', label: 'Songs' },
-            { value: 'albums', label: 'Albums' },
+            { value: 'releases', label: 'Songs & albums' },
             { value: 'artists', label: 'Artists' },
           ]}
         />

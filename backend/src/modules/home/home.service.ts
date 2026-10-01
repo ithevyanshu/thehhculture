@@ -12,7 +12,7 @@ import { upcomingEvents } from '../events/events.routes';
  * headings come from the admin-editable layout (SiteSetting "sections"); clients just
  * render each `kind`, so the layout can change without client releases.
  */
-export type SectionKind = 'songs' | 'artists' | 'recent' | 'playlists' | 'genres' | 'chart' | 'scenes' | 'artist-ranking' | 'shows' | 'posts' | 'events' | 'albums';
+export type SectionKind = 'songs' | 'artists' | 'recent' | 'playlists' | 'genres' | 'chart' | 'scenes' | 'artist-ranking' | 'shows' | 'posts' | 'events' | 'releases';
 
 export interface HomeSection {
   id: string;
@@ -354,14 +354,27 @@ async function buildCustom(
 ): Promise<HomeSection[]> {
   const custom = item.custom;
   if (!custom?.ids.length) return [];
-  const rows: { id: string }[] =
-    custom.kind === 'songs'
-      ? await songs(userId, { where: { id: { in: custom.ids } } })
-      : custom.kind === 'albums'
-        ? await prisma.album.findMany({ where: { id: { in: custom.ids } }, select: albumCardSelect })
-        : await artists(userId, { where: { id: { in: custom.ids } } });
-  const ordered = custom.ids.flatMap((id) => rows.filter((r) => r.id === id));
-  return [{ id: item.key, kind: custom.kind, title: item.title ?? 'Editor’s picks', subtitle: item.subtitle ?? undefined, items: ordered }];
+  const head = { id: item.key, title: item.title ?? 'Editor’s picks', subtitle: item.subtitle ?? undefined };
+
+  if (custom.kind === 'artists') {
+    const rows = await artists(userId, { where: { id: { in: custom.ids } } });
+    return [{ ...head, kind: 'artists', items: custom.ids.flatMap((id) => rows.filter((r) => r.id === id)) }];
+  }
+
+  // Releases mix the two, so each pick is tagged and the editor's order is kept.
+  const picks = custom.ids.map((ref) => {
+    const [type, id] = ref.split(':');
+    return { type: type === 'album' ? ('album' as const) : ('song' as const), id };
+  });
+  const [songRows, albumRows] = await Promise.all([
+    songs(userId, { where: { id: { in: picks.filter((p) => p.type === 'song').map((p) => p.id) } } }),
+    prisma.album.findMany({ where: { id: { in: picks.filter((p) => p.type === 'album').map((p) => p.id) } }, select: albumCardSelect }),
+  ]);
+  const items = picks.flatMap((p) => {
+    const row = (p.type === 'album' ? albumRows : songRows).find((r) => r.id === p.id);
+    return row ? [{ ...row, pick: p.type }] : [];
+  });
+  return [{ ...head, kind: 'releases', items }];
 }
 
 // ---------- Cover story ----------

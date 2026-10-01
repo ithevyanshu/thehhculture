@@ -190,12 +190,28 @@ export const sectionItemSchema = z.object({
   /** Overrides the default heading. */
   title: optionalText(80),
   subtitle: optionalText(160),
-  /** Present only for editor-curated sections (key starts with "custom-"). */
+  /**
+   * Present only for editor-curated sections (key starts with "custom-").
+   *
+   * A "releases" section mixes songs and albums, so each pick carries its type as
+   * "song:<id>" or "album:<id>". Sections saved before that (kind songs or albums, bare
+   * ids) are rewritten on read, so old layouts keep working untouched.
+   */
   custom: z
-    .object({
-      kind: z.enum(['songs', 'artists', 'albums']),
-      ids: z.array(id).max(24).default([]),
-    })
+    .preprocess(
+      (raw) => {
+        if (!raw || typeof raw !== 'object') return raw;
+        const c = raw as { kind?: string; ids?: unknown };
+        if (c.kind !== 'songs' && c.kind !== 'albums') return raw;
+        const type = c.kind === 'albums' ? 'album' : 'song';
+        const ids = Array.isArray(c.ids) ? (c.ids as string[]) : [];
+        return { kind: 'releases', ids: ids.map((i) => (i.includes(':') ? i : `${type}:${i}`)) };
+      },
+      z.object({
+        kind: z.enum(['releases', 'artists']),
+        ids: z.array(z.string().trim().min(1).max(60)).max(24).default([]),
+      }),
+    )
     .optional(),
 });
 

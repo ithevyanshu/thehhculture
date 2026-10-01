@@ -162,7 +162,15 @@ export type HomeSection =
   | { id: string; kind: 'shows'; title: string; subtitle?: string; seeAll?: SeeAll; items: ShowCard[] }
   | { id: string; kind: 'posts'; title: string; subtitle?: string; seeAll?: SeeAll; items: (ArtistPost & { artist: ArtistRef })[] }
   | { id: string; kind: 'events'; title: string; subtitle?: string; seeAll?: SeeAll; items: EventCard[] }
-  | { id: string; kind: 'albums'; title: string; subtitle?: string; seeAll?: SeeAll; items: AlbumCard[] };
+  | {
+      id: string;
+      kind: 'releases';
+      title: string;
+      subtitle?: string;
+      seeAll?: SeeAll;
+      /** A curated mix: each item says whether it is a song or an album. */
+      items: ((SongCard & { pick: 'song' }) | (AlbumCard & { pick: 'album' }))[];
+    };
 
 export interface SeeAll {
   type: 'artists' | 'songs';

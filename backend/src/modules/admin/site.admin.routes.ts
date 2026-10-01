@@ -25,9 +25,13 @@ function referencedIds(config: SiteConfig) {
   const showIds = new Set<string>(config.ticker.items.flatMap((i) => (i.type === 'show' ? [i.showId] : [])));
   const albumIds = new Set<string>();
   for (const item of config.sections.items) {
-    if (item.custom?.kind === 'songs') item.custom.ids.forEach((id) => songIds.add(id));
     if (item.custom?.kind === 'artists') item.custom.ids.forEach((id) => artistIds.add(id));
-    if (item.custom?.kind === 'albums') item.custom.ids.forEach((id) => albumIds.add(id));
+    // Releases carry their type: "song:<id>" or "album:<id>".
+    if (item.custom?.kind === 'releases')
+      for (const ref of item.custom.ids) {
+        const [type, id] = ref.split(':');
+        (type === 'album' ? albumIds : songIds).add(id);
+      }
   }
   return { songIds: [...songIds], artistIds: [...artistIds], showIds: [...showIds], albumIds: [...albumIds] };
 }

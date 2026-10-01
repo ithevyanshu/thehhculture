@@ -100,8 +100,12 @@ function SectionView({ section, kicker }: { section: HomeSection; kicker: string
       return <Shelf {...common}>{section.items.map((s) => <SongTile key={s.id} song={s} />)}</Shelf>;
     case 'artists':
       return <Shelf {...common}>{section.items.map((a) => <ArtistTile key={a.id} artist={a} />)}</Shelf>;
-    case 'albums':
-      return <Shelf {...common}>{section.items.map((a) => <AlbumTile key={a.id} album={a} />)}</Shelf>;
+    case 'releases':
+      return (
+        <Shelf {...common}>
+          {section.items.map((item) => (item.pick === 'album' ? <AlbumTile key={item.id} album={item} /> : <SongTile key={item.id} song={item} />))}
+        </Shelf>
+      );
     case 'shows':
       return (
         <Shelf {...common} seeAllTo="/shows" cols="grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
