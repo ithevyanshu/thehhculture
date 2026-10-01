@@ -267,12 +267,8 @@ export function CoverCarousel({ heroes, interval = 7 }: { heroes: Hero[]; interv
        * like a front page rather than a slideshow. The red rule on the live tab doubles
        * as the autoplay timer — when it finishes filling, the next slide comes up.
        */}
-      <div className="mt-10 flex flex-wrap items-stretch border-2 border-ink bg-surface">
-        {/*
-         * Full width below sm so the controls are pushed onto their own line. Left to
-         * flex-1 they share the line with a w-full control box and get crushed to nothing.
-         */}
-        <div className="flex w-full min-w-0 flex-wrap sm:w-auto sm:flex-1 sm:flex-nowrap">
+      <div className="mt-10 flex items-stretch border-2 border-ink bg-surface">
+        <div className="flex min-w-0 flex-1">
           {heroes.map((hero, i) => (
             <button
               key={i}
@@ -280,7 +276,7 @@ export function CoverCarousel({ heroes, interval = 7 }: { heroes: Hero[]; interv
               onClick={() => go(i)}
               aria-label={`Show cover story ${i + 1}: ${slideTitle(hero)}`}
               aria-current={i === current}
-              className={`relative min-w-0 flex-1 basis-1/2 border-ink pt-4 pb-3 border-r-2 px-4 text-left transition last:border-r-0 sm:basis-0 ${
+              className={`relative min-w-0 flex-1 basis-0 border-r-2 border-ink px-2 pt-3 pb-2.5 text-left transition last:border-r-0 sm:px-4 sm:pt-4 sm:pb-3 ${
                 i === current ? 'bg-surface-2' : 'hover:bg-neon/40'
               }`}
             >
@@ -308,16 +304,16 @@ export function CoverCarousel({ heroes, interval = 7 }: { heroes: Hero[]; interv
           ))}
         </div>
 
-        <div className="flex shrink-0 items-center gap-2 border-ink p-3 max-sm:w-full max-sm:justify-end max-sm:border-t-2 sm:border-l-2">
-          <button type="button" className="btn-ghost !px-3" aria-label="Previous cover story" onClick={() => go(current - 1)}>
+        <div className="flex shrink-0 items-center gap-1 border-l-2 border-ink p-2 sm:gap-2 sm:p-3">
+          <button type="button" className="btn-ghost !px-2 sm:!px-3" aria-label="Previous cover story" onClick={() => go(current - 1)}>
             <ArrowLeft size={16} />
           </button>
-          <button type="button" className="btn-ghost !px-3" aria-label="Next cover story" onClick={() => go(current + 1)}>
+          <button type="button" className="btn-ghost !px-2 sm:!px-3" aria-label="Next cover story" onClick={() => go(current + 1)}>
             <ArrowRight size={16} />
           </button>
           <button
             type="button"
-            className="btn-ghost !px-3"
+            className="btn-ghost !px-2 sm:!px-3"
             aria-label={userPaused ? 'Play slideshow' : 'Pause slideshow'}
             onClick={() => setUserPaused((p) => !p)}
           >
