@@ -8,6 +8,7 @@
 import { z } from 'zod';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
+import { slugify } from '../../lib/slug';
 
 const id = z.string().min(1).max(40);
 
@@ -75,6 +76,19 @@ export const coverSlideSchema = z.preprocess(
       kicker: optionalText(40),
       headline: z.string().trim().min(1, 'Add a headline').max(120),
       body: optionalText(600),
+      /**
+       * The full piece, shown on /story/<slug>. The body above stays the carousel
+       * teaser. Set a slug to give the story a page of its own.
+       */
+      slug: z
+        .string()
+        .trim()
+        .max(90)
+        .nullish()
+        .transform((v) => (v ? slugify(v) : null)),
+      article: optionalText(8000),
+      /** Admin opt-in: lets visitors share this story, not just staff. */
+      shareable: z.boolean().default(false),
       imageUrl,
       /** "Read more": a page on the site (/shows/legacy) or an outside article. */
       linkUrl: link,
@@ -179,7 +193,7 @@ export const sectionItemSchema = z.object({
   /** Present only for editor-curated sections (key starts with "custom-"). */
   custom: z
     .object({
-      kind: z.enum(['songs', 'artists']),
+      kind: z.enum(['songs', 'artists', 'albums']),
       ids: z.array(id).max(24).default([]),
     })
     .optional(),

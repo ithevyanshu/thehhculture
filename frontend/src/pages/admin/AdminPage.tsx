@@ -16,12 +16,13 @@ import { ImportAdmin } from './ImportAdmin';
 import { SuggestionsAdmin } from './SuggestionsAdmin';
 import { ShowsAdmin } from './ShowsAdmin';
 import { EventsAdmin } from './EventsAdmin';
+import { InvitesAdmin } from './InvitesAdmin';
 import { useDialog } from '../../components/Dialog';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
 import { can, type Permission } from '../../lib/permissions';
 
-type Tab = 'Overview' | 'Front page' | 'Artists' | 'Albums' | 'Songs' | 'Import' | 'Shows' | 'Events' | 'Taxonomy' | 'Studio' | 'Suggestions' | 'Users';
+type Tab = 'Overview' | 'Front page' | 'Artists' | 'Albums' | 'Songs' | 'Import' | 'Shows' | 'Events' | 'Taxonomy' | 'Studio' | 'Suggestions' | 'Requests' | 'Users';
 
 /** Permission each tab needs (Overview is open to all staff). */
 const TAB_PERMISSION: Record<Exclude<Tab, 'Overview'>, Permission> = {
@@ -35,6 +36,7 @@ const TAB_PERMISSION: Record<Exclude<Tab, 'Overview'>, Permission> = {
   Taxonomy: 'taxonomy',
   Studio: 'studio',
   Suggestions: 'suggestions',
+  Requests: 'users',
   Users: 'users',
 };
 type Editing = { kind: 'artist' | 'album' | 'song'; id: string | null } | null;
@@ -403,7 +405,7 @@ export function AdminPage() {
   };
 
   const { user } = useAuth();
-  const allTabs: Tab[] = ['Overview', 'Front page', 'Artists', 'Albums', 'Songs', 'Import', 'Shows', 'Events', 'Taxonomy', 'Studio', 'Suggestions', 'Users'];
+  const allTabs: Tab[] = ['Overview', 'Front page', 'Artists', 'Albums', 'Songs', 'Import', 'Shows', 'Events', 'Taxonomy', 'Studio', 'Suggestions', 'Requests', 'Users'];
   const tabs = allTabs.filter((t) => t === 'Overview' || can(user, TAB_PERMISSION[t]));
 
   return (
@@ -427,6 +429,7 @@ export function AdminPage() {
       {tab === 'Songs' && <SongsAdmin edit={(id) => setEditing({ kind: 'song', id })} />}
       {tab === 'Taxonomy' && <TaxonomyAdmin />}
       {tab === 'Front page' && <FrontPageAdmin />}
+      {tab === 'Requests' && <InvitesAdmin />}
       {tab === 'Users' && <UsersAdmin />}
       {tab === 'Studio' && <StudioAdmin />}
       {tab === 'Import' && <ImportAdmin />}

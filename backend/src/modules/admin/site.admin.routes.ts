@@ -23,22 +23,28 @@ function referencedIds(config: SiteConfig) {
     ...config.chart.artistIds,
   ]);
   const showIds = new Set<string>(config.ticker.items.flatMap((i) => (i.type === 'show' ? [i.showId] : [])));
+  const albumIds = new Set<string>();
   for (const item of config.sections.items) {
     if (item.custom?.kind === 'songs') item.custom.ids.forEach((id) => songIds.add(id));
     if (item.custom?.kind === 'artists') item.custom.ids.forEach((id) => artistIds.add(id));
+    if (item.custom?.kind === 'albums') item.custom.ids.forEach((id) => albumIds.add(id));
   }
-  return { songIds: [...songIds], artistIds: [...artistIds], showIds: [...showIds] };
+  return { songIds: [...songIds], artistIds: [...artistIds], showIds: [...showIds], albumIds: [...albumIds] };
 }
 
 siteAdminRouter.get('/site-config', async (_req, res) => {
   const config = await getSiteConfig();
-  const { songIds, artistIds } = referencedIds(config);
-  const [songs, artists] = await Promise.all([
+  const { songIds, artistIds, albumIds } = referencedIds(config);
+  const [songs, artists, albums] = await Promise.all([
     prisma.song.findMany({
       where: { id: { in: songIds } },
       select: { id: true, slug: true, title: true, coverUrl: true, artist: { select: { name: true } } },
     }),
     prisma.artist.findMany({ where: { id: { in: artistIds } }, select: { id: true, slug: true, name: true, imageUrl: true } }),
+    prisma.album.findMany({
+      where: { id: { in: albumIds } },
+      select: { id: true, slug: true, title: true, coverUrl: true, artist: { select: { name: true } } },
+    }),
   ]);
   res.json({
     config,
@@ -46,6 +52,7 @@ siteAdminRouter.get('/site-config', async (_req, res) => {
     refs: {
       songs: Object.fromEntries(songs.map((s) => [s.id, { id: s.id, slug: s.slug, title: s.title, coverUrl: s.coverUrl, artistName: s.artist.name }])),
       artists: Object.fromEntries(artists.map((a) => [a.id, a])),
+      albums: Object.fromEntries(albums.map((a) => [a.id, { id: a.id, slug: a.slug, title: a.title, coverUrl: a.coverUrl, artistName: a.artist.name }])),
     },
   });
 });
@@ -58,14 +65,15 @@ siteAdminRouter.put('/site-config/:key', async (req, res) => {
   let value = parse(SCHEMAS[k] as z.ZodTypeAny, req.body) as SiteConfig[typeof k];
 
   // Referenced records must exist.
-  const { songIds, artistIds, showIds } = referencedIds({ ...(await getSiteConfig()), [k]: value } as SiteConfig);
-  const [songCount, artistCount, showCount] = await Promise.all([
+  const { songIds, artistIds, showIds, albumIds } = referencedIds({ ...(await getSiteConfig()), [k]: value } as SiteConfig);
+  const [songCount, artistCount, showCount, albumCount] = await Promise.all([
     prisma.song.count({ where: { id: { in: songIds } } }),
     prisma.artist.count({ where: { id: { in: artistIds } } }),
     prisma.show.count({ where: { id: { in: showIds } } }),
+    prisma.album.count({ where: { id: { in: albumIds } } }),
   ]);
-  if (songCount !== songIds.length || artistCount !== artistIds.length || showCount !== showIds.length) {
-    throw badRequest('Some selected songs, artists or shows no longer exist. Refresh and try again.');
+  if (songCount !== songIds.length || artistCount !== artistIds.length || showCount !== showIds.length || albumCount !== albumIds.length) {
+    throw badRequest('Some selected songs, artists, albums or shows no longer exist. Refresh and try again.');
   }
 
   if (k === 'sections') value = normalizeSections(value as SiteConfig['sections']) as SiteConfig[typeof k];

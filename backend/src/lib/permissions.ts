@@ -15,7 +15,7 @@ type Rule = { method?: string; path: RegExp; allow: Permission[] | 'staff' };
  */
 const RULES: Rule[] = [
   { path: /^\/stats$/, allow: 'staff' },
-  { method: 'GET', path: /^\/albums(\/|$)/, allow: ['albums', 'songs'] },
+  { method: 'GET', path: /^\/albums(\/|$)/, allow: ['albums', 'songs', 'frontPage'] },
   { method: 'POST', path: /^\/artists$/, allow: ['artists', 'songs', 'shows'] },
   { method: 'POST', path: /^\/regions$/, allow: ['taxonomy', 'artists'] },
   { path: /^\/(artists|images)(\/|$)/, allow: ['artists'] },

@@ -1,12 +1,12 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowDown, ArrowUp, Eye, EyeOff, Plus, Trash2, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, Clock, Eye, EyeOff, GripVertical, Plus, Trash2, X } from 'lucide-react';
 import { api, ApiError } from '../../lib/api';
 import { useArtists, useGenres, useRegions, useShows, useSongs } from '../../lib/queries';
 import { Artwork } from '../../components/Artwork';
 import { Spinner } from '../../components/ui';
 import { useDialog } from '../../components/Dialog';
-import type { Tone } from '../../lib/types';
+import type { AlbumCard, Tone } from '../../lib/types';
 
 // ---------- Types mirroring backend/src/modules/site/config.ts ----------
 
@@ -24,6 +24,12 @@ interface NewsSlide {
   kicker: string | null;
   headline: string;
   body: string | null;
+  /** Set to give the story its own page at /story/<slug>. */
+  slug: string | null;
+  /** The full piece shown on that page; `body` stays the carousel teaser. */
+  article: string | null;
+  /** Admin opt-in: visitors get the share button too. */
+  shareable: boolean;
   imageUrl: string | null;
   linkUrl: string | null;
   linkLabel: string | null;
@@ -65,7 +71,7 @@ interface SectionItem {
   visible: boolean;
   title: string | null;
   subtitle: string | null;
-  custom?: { kind: 'songs' | 'artists'; ids: string[] };
+  custom?: { kind: 'songs' | 'artists' | 'albums'; ids: string[] };
 }
 interface Chart {
   title: string | null;
@@ -77,6 +83,13 @@ interface Chart {
   artistIds: string[];
   sort: 'likes' | 'new' | 'random';
   maxPerArtist: number;
+}
+interface AlbumRef {
+  id: string;
+  slug: string;
+  title: string;
+  coverUrl: string | null;
+  artistName: string;
 }
 interface SongRef {
   id: string;
@@ -100,7 +113,7 @@ interface Issue {
 interface SiteConfigResponse {
   config: { coverStory: CoverStory; announcement: Announcement; ticker: Ticker; sections: { items: SectionItem[] }; chart: Chart; issue: Issue };
   builtins: { key: string; label: string; audience: 'everyone' | 'signed-in' }[];
-  refs: { songs: Record<string, SongRef>; artists: Record<string, ArtistRef> };
+  refs: { songs: Record<string, SongRef>; artists: Record<string, ArtistRef>; albums: Record<string, AlbumRef> };
 }
 
 type Refs = SiteConfigResponse['refs'];
@@ -264,7 +277,7 @@ function Picker({
   placeholder,
   artistSlug,
 }: {
-  kind: 'song' | 'artist';
+  kind: 'song' | 'artist' | 'album';
   onPick: (ref: SongRef | ArtistRef) => void;
   placeholder?: string;
   artistSlug?: string;
@@ -273,18 +286,25 @@ function Picker({
   const enabled = q.trim().length > 0 || !!artistSlug;
   const songs = useSongs({ q, artist: artistSlug, limit: 8, sort: 'popular' }, kind === 'song' && enabled);
   const artists = useArtists({ q, limit: 8 }, kind === 'artist' && enabled);
+  const albums = useQuery({
+    queryKey: ['admin', 'albums', q],
+    queryFn: () => api<{ items: AlbumCard[] }>('/admin/albums', { query: { q } }),
+    enabled: kind === 'album' && enabled,
+  });
   const [open, setOpen] = useState(false);
 
-  const results: (SongRef | ArtistRef)[] =
+  const results: (SongRef | ArtistRef | AlbumRef)[] =
     kind === 'song'
       ? (songs.data?.items ?? []).map((s) => ({ id: s.id, slug: s.slug, title: s.title, coverUrl: s.coverUrl ?? s.album?.coverUrl ?? null, artistName: s.artist.name }))
-      : (artists.data?.items ?? []).map((a) => ({ id: a.id, slug: a.slug, name: a.name, imageUrl: a.imageUrl }));
+      : kind === 'album'
+        ? (albums.data?.items ?? []).slice(0, 8).map((a) => ({ id: a.id, slug: a.slug, title: a.title, coverUrl: a.coverUrl, artistName: a.artist.name }))
+        : (artists.data?.items ?? []).map((a) => ({ id: a.id, slug: a.slug, name: a.name, imageUrl: a.imageUrl }));
 
   return (
     <div className="relative">
       <input
         className="input"
-        placeholder={placeholder ?? (kind === 'song' ? 'Search songs to add…' : 'Search artists…')}
+        placeholder={placeholder ?? (kind === 'song' ? 'Search songs to add…' : kind === 'album' ? 'Search albums to add…' : 'Search artists…')}
         value={q}
         onFocus={() => setOpen(true)}
         onBlur={() => setTimeout(() => setOpen(false), 150)}
@@ -321,7 +341,7 @@ function Picker({
   );
 }
 
-function RefLabel({ id, kind, refs }: { id: string; kind: 'song' | 'artist'; refs: Refs }) {
+function RefLabel({ id, kind, refs }: { id: string; kind: 'song' | 'artist' | 'album'; refs: Refs }) {
   if (kind === 'song') {
     const s = refs.songs[id];
     return s ? (
@@ -337,7 +357,7 @@ function RefLabel({ id, kind, refs }: { id: string; kind: 'song' | 'artist'; ref
 }
 
 /** Ordered list of ids with move / remove controls. */
-function IdList({ ids, kind, refs, onChange, numbered }: { ids: string[]; kind: 'song' | 'artist'; refs: Refs; onChange: (ids: string[]) => void; numbered?: boolean }) {
+function IdList({ ids, kind, refs, onChange, numbered }: { ids: string[]; kind: 'song' | 'artist' | 'album'; refs: Refs; onChange: (ids: string[]) => void; numbered?: boolean }) {
   if (!ids.length) return <p className="text-sm text-muted italic">Nothing added yet.</p>;
   return (
     <ol className="border-2 border-ink">
@@ -379,6 +399,9 @@ const EMPTY_NEWS_SLIDE: NewsSlide = {
   kicker: null,
   headline: '',
   body: null,
+  slug: null,
+  article: null,
+  shareable: false,
   imageUrl: null,
   linkUrl: null,
   linkLabel: null,
@@ -411,7 +434,7 @@ function ArtistSlideFields({
 }: {
   slide: ArtistSlide;
   refs: Refs;
-  addRef: (r: SongRef | ArtistRef) => void;
+  addRef: (r: SongRef | ArtistRef | AlbumRef, kind?: 'album') => void;
   onChange: (s: ArtistSlide) => void;
 }) {
   const artist = slide.artistId ? refs.artists[slide.artistId] : null;
@@ -484,7 +507,7 @@ function NewsSlideFields({
 }: {
   slide: NewsSlide;
   refs: Refs;
-  addRef: (r: SongRef | ArtistRef) => void;
+  addRef: (r: SongRef | ArtistRef | AlbumRef, kind?: 'album') => void;
   onChange: (s: NewsSlide) => void;
 }) {
   const set = (patch: Partial<NewsSlide>) => onChange({ ...slide, ...patch });
@@ -519,9 +542,37 @@ function NewsSlideFields({
         </div>
       </div>
       <div className="mt-4 space-y-4">
-        <Field label="Story" hint="A few lines. Keep it short, it's a front page.">
+        <label className="mono flex items-center gap-2 text-sm" title="Shows the Instagram share button to visitors too, not just staff.">
+          <input type="checkbox" checked={slide.shareable} onChange={(e) => set({ shareable: e.target.checked })} /> Anyone can share this story
+        </label>
+        <Field label="Teaser" hint="A few lines for the carousel. Keep it short, it's a front page.">
           <textarea className="input min-h-24" maxLength={600} value={slide.body ?? ''} onChange={(e) => set({ body: e.target.value })} />
         </Field>
+        <div className="border-2 border-dashed border-ink/30 p-3">
+          <Field
+            label="Give it a page"
+            hint={
+              slide.slug
+                ? `Readable at /story/${slide.slug}, with a "Read the full story" button on the slide.`
+                : 'Leave empty and the slide stays a teaser with no page of its own.'
+            }
+          >
+            <input
+              className="input"
+              maxLength={90}
+              placeholder="seedhe-maut-india-tour"
+              value={slide.slug ?? ''}
+              onChange={(e) => set({ slug: e.target.value || null })}
+            />
+          </Field>
+          {slide.slug && (
+            <div className="mt-4">
+              <Field label="Full story" hint="The long version, shown only on its page. Blank lines start a new paragraph.">
+                <textarea className="input min-h-40" maxLength={8000} value={slide.article ?? ''} onChange={(e) => set({ article: e.target.value })} />
+              </Field>
+            </div>
+          )}
+        </div>
         <Field label="Artists in this story" hint="Shown as chips linking to their pages (up to 6).">
           <div className="flex flex-wrap items-center gap-2">
             {slide.artistIds.map((id) => (
@@ -551,24 +602,48 @@ function NewsSlideFields({
   );
 }
 
+/** One line describing a slide, so a closed row still says what it is. */
+function slideSummary(slide: CoverSlide, refs: Refs) {
+  if (slide.type === 'news') return slide.headline.trim() || 'Untitled story';
+  const artist = slide.artistId ? refs.artists[slide.artistId] : null;
+  return artist?.name ?? 'No artist picked';
+}
+
+/**
+ * A slide row. Closed it is one line, so ten slides fit on screen and can be dragged
+ * into order without scrolling; open it is the full editor, one at a time.
+ */
 function CoverSlideEditor({
   slide,
   index,
   total,
   refs,
   addRef,
+  open,
+  onToggle,
   onChange,
   onMove,
   onRemove,
+  drag,
 }: {
   slide: CoverSlide;
   index: number;
   total: number;
   refs: Refs;
-  addRef: (r: SongRef | ArtistRef) => void;
+  addRef: (r: SongRef | ArtistRef | AlbumRef, kind?: 'album') => void;
+  open: boolean;
+  onToggle: () => void;
   onChange: (s: CoverSlide) => void;
   onMove: (dir: -1 | 1) => void;
   onRemove: () => void;
+  drag: {
+    isDragging: boolean;
+    isOver: boolean;
+    onStart: () => void;
+    onEnd: () => void;
+    onOver: () => void;
+    onDrop: () => void;
+  };
 }) {
   // Switching type keeps the sticker and schedule.
   const switchType = (type: CoverSlide['type']) => {
@@ -577,19 +652,53 @@ function CoverSlideEditor({
     onChange(type === 'news' ? { ...EMPTY_NEWS_SLIDE, ...keep } : { ...EMPTY_ARTIST_SLIDE, ...keep });
   };
 
+  const artist = slide.type === 'artist' && slide.artistId ? refs.artists[slide.artistId] : null;
+  const scheduled = !!(slide.startsAt || slide.endsAt);
+
   return (
-    <li className="border-2 border-ink bg-surface p-4">
-      <div className="mb-3 flex flex-wrap items-center gap-3">
-        <span className="mono">Slide {String(index + 1).padStart(2, '0')}</span>
-        <Segmented
-          value={slide.type}
-          onChange={switchType}
-          options={[
-            { value: 'artist', label: 'Artist feature' },
-            { value: 'news', label: 'News' },
-          ]}
-        />
-        <span className="flex-1" />
+    <li
+      onDragOver={(e) => {
+        e.preventDefault();
+        drag.onOver();
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        drag.onDrop();
+      }}
+      className={`border-2 border-ink bg-surface transition ${drag.isDragging ? 'opacity-40' : ''} ${
+        drag.isOver && !drag.isDragging ? 'border-dashed !border-saffron' : ''
+      }`}
+    >
+      <div className="flex items-center gap-2 px-2 py-2">
+        <span
+          draggable
+          onDragStart={drag.onStart}
+          onDragEnd={drag.onEnd}
+          title="Drag to reorder"
+          aria-label={`Drag slide ${index + 1} to reorder`}
+          className="cursor-grab px-1 text-dim hover:text-ink active:cursor-grabbing"
+        >
+          <GripVertical size={16} />
+        </span>
+        <button type="button" onClick={onToggle} className="flex min-w-0 flex-1 items-center gap-3 text-left" aria-expanded={open}>
+          {open ? <ChevronDown size={14} className="shrink-0" /> : <ChevronRight size={14} className="shrink-0" />}
+          <span className="mono shrink-0 text-muted">{String(index + 1).padStart(2, '0')}</span>
+          {artist && (
+            <span className="size-7 shrink-0 border border-ink">
+              <Artwork src={artist.imageUrl} name={artist.name} seed={artist.slug} live />
+            </span>
+          )}
+          <span className={`mono shrink-0 border-2 border-ink px-1.5 py-0.5 ${slide.type === 'news' ? 'bg-neon' : 'bg-surface-2'}`}>
+            {slide.type === 'news' ? 'News' : 'Artist'}
+          </span>
+          <span className={`truncate font-bold uppercase ${isComplete(slide) ? '' : 'text-dim'}`}>{slideSummary(slide, refs)}</span>
+          {scheduled && (
+            <span className="mono flex shrink-0 items-center gap-1 text-dim" title="Only shows inside its date window">
+              <Clock size={11} /> scheduled
+            </span>
+          )}
+          {!isComplete(slide) && <span className="mono shrink-0 bg-red px-1.5 py-0.5 text-paper">unfinished</span>}
+        </button>
         <IconBtn label="Move up" onClick={() => onMove(-1)} disabled={index === 0}>
           <ArrowUp size={14} />
         </IconBtn>
@@ -600,19 +709,58 @@ function CoverSlideEditor({
           <Trash2 size={14} />
         </IconBtn>
       </div>
-      {slide.type === 'artist' ? (
-        <ArtistSlideFields slide={slide} refs={refs} addRef={addRef} onChange={onChange} />
-      ) : (
-        <NewsSlideFields slide={slide} refs={refs} addRef={addRef} onChange={onChange} />
+
+      {open && (
+        <div className="border-t-2 border-dashed border-ink/30 p-4">
+          <div className="mb-3">
+            <Segmented
+              value={slide.type}
+              onChange={switchType}
+              options={[
+                { value: 'artist', label: 'Artist feature' },
+                { value: 'news', label: 'News' },
+              ]}
+            />
+          </div>
+          {slide.type === 'artist' ? (
+            <ArtistSlideFields slide={slide} refs={refs} addRef={addRef} onChange={onChange} />
+          ) : (
+            <NewsSlideFields slide={slide} refs={refs} addRef={addRef} onChange={onChange} />
+          )}
+        </div>
       )}
     </li>
   );
 }
 
-function CoverStoryPanel({ initial, refs, addRef }: { initial: CoverStory; refs: Refs; addRef: (r: SongRef | ArtistRef) => void }) {
+function CoverStoryPanel({ initial, refs, addRef }: { initial: CoverStory; refs: Refs; addRef: (r: SongRef | ArtistRef | AlbumRef, kind?: 'album') => void }) {
   const [v, setV] = useState(initial);
   const { save, saving, status } = useSaveSetting<CoverStory>('coverStory');
   const setSlide = (i: number, s: CoverSlide) => setV({ ...v, slides: v.slides.map((x, j) => (j === i ? s : x)) });
+  /** Only one slide is expanded at a time; the rest stay one line each. */
+  const [open, setOpen] = useState<number | null>(null);
+  const [dragFrom, setDragFrom] = useState<number | null>(null);
+  const [dragOver, setDragOver] = useState<number | null>(null);
+
+  /** Moves a slide and keeps whichever one is expanded expanded. */
+  const reorder = (from: number, to: number) => {
+    if (from === to || to < 0 || to >= v.slides.length) return;
+    const slides = [...v.slides];
+    slides.splice(to, 0, ...slides.splice(from, 1));
+    setV({ ...v, slides });
+    setOpen((i) => {
+      if (i === null) return null;
+      if (i === from) return to;
+      if (from < i && i <= to) return i - 1;
+      if (to <= i && i < from) return i + 1;
+      return i;
+    });
+  };
+
+  const removeSlide = (i: number) => {
+    setV({ ...v, slides: v.slides.filter((_, j) => j !== i) });
+    setOpen((cur) => (cur === null ? null : cur === i ? null : cur > i ? cur - 1 : cur));
+  };
 
   return (
     <Panel
@@ -640,7 +788,7 @@ function CoverStoryPanel({ initial, refs, addRef }: { initial: CoverStory; refs:
       )}
       {v.mode === 'manual' && (
         <>
-          <ol className="space-y-4">
+          <ol className="space-y-2" onDragEnd={() => setDragOver(null)}>
             {v.slides.map((s, i) => (
               <CoverSlideEditor
                 key={i}
@@ -649,20 +797,48 @@ function CoverStoryPanel({ initial, refs, addRef }: { initial: CoverStory; refs:
                 total={v.slides.length}
                 refs={refs}
                 addRef={addRef}
+                open={open === i}
+                onToggle={() => setOpen(open === i ? null : i)}
                 onChange={(next) => setSlide(i, next)}
-                onMove={(dir) => setV({ ...v, slides: move(v.slides, i, dir) })}
-                onRemove={() => setV({ ...v, slides: v.slides.filter((_, j) => j !== i) })}
+                onMove={(dir) => reorder(i, i + dir)}
+                onRemove={() => removeSlide(i)}
+                drag={{
+                  isDragging: dragFrom === i,
+                  isOver: dragOver === i,
+                  onStart: () => setDragFrom(i),
+                  onEnd: () => {
+                    setDragFrom(null);
+                    setDragOver(null);
+                  },
+                  onOver: () => setDragOver(i),
+                  onDrop: () => {
+                    if (dragFrom !== null) reorder(dragFrom, i);
+                    setDragFrom(null);
+                    setDragOver(null);
+                  },
+                }}
               />
             ))}
           </ol>
-          <button
-            type="button"
-            className="btn-ghost"
-            disabled={v.slides.length >= MAX_SLIDES}
-            onClick={() => setV({ ...v, slides: [...v.slides, EMPTY_ARTIST_SLIDE] })}
-          >
-            <Plus size={14} /> Add slide
-          </button>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              className="btn-ghost"
+              disabled={v.slides.length >= MAX_SLIDES}
+              onClick={() => {
+                setV({ ...v, slides: [...v.slides, EMPTY_ARTIST_SLIDE] });
+                setOpen(v.slides.length); // open the one just added
+              }}
+            >
+              <Plus size={14} /> Add slide
+            </button>
+            {open !== null && (
+              <button type="button" className="mono text-muted hover:underline" onClick={() => setOpen(null)}>
+                Collapse
+              </button>
+            )}
+            <p className="text-xs text-dim">Drag the handle to reorder. Click a slide to edit it.</p>
+          </div>
           <label className="flex items-start gap-2 text-sm">
             <input type="checkbox" className="mt-1" checked={v.autoFill} onChange={(e) => setV({ ...v, autoFill: e.target.checked })} />
             <span>
@@ -838,7 +1014,7 @@ function SlugChips({ options, value, onChange }: { options: { slug: string; name
   );
 }
 
-function TickerPanel({ initial, refs, addRef }: { initial: Ticker; refs: Refs; addRef: (r: SongRef | ArtistRef) => void }) {
+function TickerPanel({ initial, refs, addRef }: { initial: Ticker; refs: Refs; addRef: (r: SongRef | ArtistRef | AlbumRef, kind?: 'album') => void }) {
   const [v, setV] = useState(initial);
   const [text, setText] = useState({ text: '', linkUrl: '' });
   const { save, saving, status } = useSaveSetting<Ticker>('ticker');
@@ -1039,11 +1215,11 @@ function SectionsPanel({
   initial: SectionItem[];
   builtins: SiteConfigResponse['builtins'];
   refs: Refs;
-  addRef: (r: SongRef | ArtistRef) => void;
+  addRef: (r: SongRef | ArtistRef | AlbumRef, kind?: 'album') => void;
 }) {
   const [items, setItems] = useState(initial);
   const dialog = useDialog();
-  const [draft, setDraft] = useState<{ title: string; kind: 'songs' | 'artists' }>({ title: '', kind: 'songs' });
+  const [draft, setDraft] = useState<{ title: string; kind: 'songs' | 'artists' | 'albums' }>({ title: '', kind: 'songs' });
   const { save, saving, status } = useSaveSetting<{ items: SectionItem[] }>('sections');
   const meta = Object.fromEntries(builtins.map((b) => [b.key, b]));
   const update = (i: number, patch: Partial<SectionItem>) => setItems(items.map((it, j) => (j === i ? { ...it, ...patch } : it)));
@@ -1110,14 +1286,14 @@ function SectionsPanel({
                   />
                   <IdList
                     ids={custom.ids}
-                    kind={custom.kind === 'songs' ? 'song' : 'artist'}
+                    kind={custom.kind === 'songs' ? 'song' : custom.kind === 'albums' ? 'album' : 'artist'}
                     refs={refs}
                     onChange={(ids) => update(i, { custom: { ...custom, ids } })}
                   />
                   <Picker
-                    kind={custom.kind === 'songs' ? 'song' : 'artist'}
+                    kind={custom.kind === 'songs' ? 'song' : custom.kind === 'albums' ? 'album' : 'artist'}
                     onPick={(r) => {
-                      addRef(r);
+                      addRef(r, custom.kind === 'albums' ? 'album' : undefined);
                       if (!custom.ids.includes(r.id)) update(i, { custom: { ...custom, ids: [...custom.ids, r.id] } });
                     }}
                   />
@@ -1137,6 +1313,7 @@ function SectionsPanel({
           onChange={(kind) => setDraft({ ...draft, kind })}
           options={[
             { value: 'songs', label: 'Songs' },
+            { value: 'albums', label: 'Albums' },
             { value: 'artists', label: 'Artists' },
           ]}
         />
@@ -1157,7 +1334,7 @@ function SectionsPanel({
   );
 }
 
-function ChartPanel({ initial, refs, addRef }: { initial: Chart; refs: Refs; addRef: (r: SongRef | ArtistRef) => void }) {
+function ChartPanel({ initial, refs, addRef }: { initial: Chart; refs: Refs; addRef: (r: SongRef | ArtistRef | AlbumRef, kind?: 'album') => void }) {
   const [v, setV] = useState(initial);
   const { save, saving, status } = useSaveSetting<Chart>('chart');
 
@@ -1270,16 +1447,17 @@ export function FrontPageAdmin() {
     queryFn: () => api<SiteConfigResponse>('/admin/site-config'),
     refetchOnWindowFocus: false,
   });
-  const [refs, setRefs] = useState<Refs>({ songs: {}, artists: {} });
+  const [refs, setRefs] = useState<Refs>({ songs: {}, artists: {}, albums: {} });
 
   useEffect(() => {
-    if (data) setRefs((r) => ({ songs: { ...r.songs, ...data.refs.songs }, artists: { ...r.artists, ...data.refs.artists } }));
+    if (data) setRefs((r) => ({ songs: { ...r.songs, ...data.refs.songs }, artists: { ...r.artists, ...data.refs.artists }, albums: { ...r.albums, ...data.refs.albums } }));
   }, [data]);
 
-  const addRef = (r: SongRef | ArtistRef) =>
-    setRefs((prev) =>
-      'title' in r ? { ...prev, songs: { ...prev.songs, [r.id]: r } } : { ...prev, artists: { ...prev.artists, [r.id]: r } },
-    );
+  const addRef = (r: SongRef | ArtistRef | AlbumRef, kind?: 'album') =>
+    setRefs((prev) => {
+      if (kind === 'album') return { ...prev, albums: { ...prev.albums, [r.id]: r as AlbumRef } };
+      return 'title' in r ? { ...prev, songs: { ...prev.songs, [r.id]: r } } : { ...prev, artists: { ...prev.artists, [r.id]: r } };
+    });
 
   if (isLoading || !data) return <Spinner />;
   const { config } = data;

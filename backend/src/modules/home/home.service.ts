@@ -1,5 +1,5 @@
 import { prisma } from '../../lib/prisma';
-import { artistCardSelect, songCardSelect, withFollowFlags, withLikeFlags } from '../catalog/selects';
+import { albumCardSelect, artistCardSelect, songCardSelect, withFollowFlags, withLikeFlags } from '../catalog/selects';
 import { recentlyViewed } from '../me/me.routes';
 import { playlistCardSelect } from '../playlists/playlists.routes';
 import { getSiteConfig, type SiteConfig } from '../site/config';
@@ -12,7 +12,7 @@ import { upcomingEvents } from '../events/events.routes';
  * headings come from the admin-editable layout (SiteSetting "sections"); clients just
  * render each `kind`, so the layout can change without client releases.
  */
-export type SectionKind = 'songs' | 'artists' | 'recent' | 'playlists' | 'genres' | 'chart' | 'scenes' | 'artist-ranking' | 'shows' | 'posts' | 'events';
+export type SectionKind = 'songs' | 'artists' | 'recent' | 'playlists' | 'genres' | 'chart' | 'scenes' | 'artist-ranking' | 'shows' | 'posts' | 'events' | 'albums';
 
 export interface HomeSection {
   id: string;
@@ -357,7 +357,9 @@ async function buildCustom(
   const rows: { id: string }[] =
     custom.kind === 'songs'
       ? await songs(userId, { where: { id: { in: custom.ids } } })
-      : await artists(userId, { where: { id: { in: custom.ids } } });
+      : custom.kind === 'albums'
+        ? await prisma.album.findMany({ where: { id: { in: custom.ids } }, select: albumCardSelect })
+        : await artists(userId, { where: { id: { in: custom.ids } } });
   const ordered = custom.ids.flatMap((id) => rows.filter((r) => r.id === id));
   return [{ id: item.key, kind: custom.kind, title: item.title ?? 'Editor’s picks', subtitle: item.subtitle ?? undefined, items: ordered }];
 }
@@ -387,6 +389,9 @@ async function newsHeroFor(slide: Extract<Slide, { type: 'news' }>) {
     kicker: slide.kicker,
     headline: slide.headline,
     body: slide.body,
+    /** Set when the story has a page of its own, so the slide can link to it. */
+    slug: slide.slug,
+    shareable: slide.shareable,
     imageUrl: slide.imageUrl,
     linkUrl: slide.linkUrl,
     linkLabel: slide.linkLabel,

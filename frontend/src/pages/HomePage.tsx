@@ -4,7 +4,7 @@ import { useAuth } from '../auth/AuthContext';
 import { useHome, useIssueNumber } from '../lib/queries';
 import { toQuery } from '../lib/api';
 import { issueDate } from '../lib/format';
-import { ArtistTile, PlaylistTile, SongRow, SongTile, TrackList } from '../components/Cards';
+import { AlbumTile, ArtistTile, PlaylistTile, SongRow, SongTile, TrackList } from '../components/Cards';
 import { ShowTile } from '../components/ShowTile';
 import { EventTile } from '../components/EventCards';
 import { CoverCarousel } from '../components/CoverCarousel';
@@ -100,6 +100,8 @@ function SectionView({ section, kicker }: { section: HomeSection; kicker: string
       return <Shelf {...common}>{section.items.map((s) => <SongTile key={s.id} song={s} />)}</Shelf>;
     case 'artists':
       return <Shelf {...common}>{section.items.map((a) => <ArtistTile key={a.id} artist={a} />)}</Shelf>;
+    case 'albums':
+      return <Shelf {...common}>{section.items.map((a) => <AlbumTile key={a.id} album={a} />)}</Shelf>;
     case 'shows':
       return (
         <Shelf {...common} seeAllTo="/shows" cols="grid-cols-1 md:grid-cols-2 xl:grid-cols-3">

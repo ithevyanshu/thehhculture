@@ -55,6 +55,8 @@ export interface ArtistCard extends ArtistRef {
   verified: boolean;
   instagramUrl?: string | null;
   isProducer?: boolean;
+  /** Admin opt-in: visitors (not just staff) get the share button. */
+  shareable?: boolean;
   /** A duo, group or crew rather than one person. */
   isGroup?: boolean;
   /** How they describe themselves: "Duo", "Crew", "Collective". */
@@ -86,6 +88,8 @@ export interface SongCard {
   releaseDate: string | null;
   durationSec: number | null;
   explicit: boolean;
+  /** Admin opt-in: visitors (not just staff) get the share button. */
+  shareable?: boolean;
   spotifyTrackId: string | null;
   youtubeVideoId: string | null;
   artist: ArtistRef;
@@ -157,7 +161,8 @@ export type HomeSection =
   | { id: string; kind: 'artist-ranking'; title: string; subtitle?: string; seeAll?: SeeAll; items: ArtistCard[] }
   | { id: string; kind: 'shows'; title: string; subtitle?: string; seeAll?: SeeAll; items: ShowCard[] }
   | { id: string; kind: 'posts'; title: string; subtitle?: string; seeAll?: SeeAll; items: (ArtistPost & { artist: ArtistRef })[] }
-  | { id: string; kind: 'events'; title: string; subtitle?: string; seeAll?: SeeAll; items: EventCard[] };
+  | { id: string; kind: 'events'; title: string; subtitle?: string; seeAll?: SeeAll; items: EventCard[] }
+  | { id: string; kind: 'albums'; title: string; subtitle?: string; seeAll?: SeeAll; items: AlbumCard[] };
 
 export interface SeeAll {
   type: 'artists' | 'songs';
@@ -195,6 +200,10 @@ export interface NewsHero {
   kicker: string | null;
   headline: string;
   body: string | null;
+  /** Admin opt-in: visitors (not just staff) get the share button. */
+  shareable?: boolean;
+  /** Set when the story has its own page at /story/<slug>. */
+  slug: string | null;
   imageUrl: string | null;
   /** Site path (/shows/legacy) or outside URL. */
   linkUrl: string | null;
@@ -375,6 +384,9 @@ export interface EventCard {
   priceFrom: number | null;
   status: EventStatus;
   featured: boolean;
+  /** Admin opt-in: visitors (not just staff) get the share button. */
+  shareable?: boolean;
+
   region: Taxon | null;
   /** Billing order; the first is the headliner. */
   lineup: { order: number; artist: ArtistRef }[];
