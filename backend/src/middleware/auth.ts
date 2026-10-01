@@ -32,9 +32,10 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
   const token = readBearer(req);
   const payload = token ? verifyAccessToken(token) : null;
   if (!payload) return next(unauthorized());
-  const account = await prisma.user.findUnique({ where: { id: payload.sub }, select: { disabled: true } });
+  const account = await prisma.user.findUnique({ where: { id: payload.sub }, select: { disabled: true, status: true } });
   if (!account) return next(unauthorized());
   if (account.disabled) return next(forbidden('This account has been disabled'));
+  if (account.status !== 'APPROVED') return next(forbidden('This account is not active'));
   req.user = { id: payload.sub, role: payload.role };
   next();
 }
@@ -60,8 +61,8 @@ export function currentUser(req: Request) {
  */
 export async function requireStaff(req: Request, _res: Response, next: NextFunction) {
   if (!req.user) return next(unauthorized());
-  const user = await prisma.user.findUnique({ where: { id: req.user.id }, select: { role: true, permissions: true, disabled: true } });
-  if (!user || user.disabled) return next(unauthorized());
+  const user = await prisma.user.findUnique({ where: { id: req.user.id }, select: { role: true, permissions: true, disabled: true, status: true } });
+  if (!user || user.disabled || user.status !== 'APPROVED') return next(unauthorized());
   if (user.role !== 'ADMIN' && !(user.role === 'SUB_ADMIN' && subAdminCan(user.permissions, req.method, req.path))) {
     return next(forbidden("You don't have access to this part of the admin panel"));
   }

@@ -8,9 +8,22 @@ interface AuthState {
   /** True until the initial session restore has finished. */
   loading: boolean;
   login: (identifier: string, password: string) => Promise<User>;
-  register: (input: { email: string; username: string; password: string; displayName?: string }) => Promise<User>;
+  /** Invite-only: this asks to join and never signs anyone in. */
+  requestInvite: (input: InviteRequest) => Promise<{ status: string; message: string }>;
   logout: () => Promise<void>;
   setUser: (user: User) => void;
+}
+
+export interface InviteRequest {
+  email: string;
+  username: string;
+  password: string;
+  displayName?: string;
+  note?: string;
+  instagramUrl?: string;
+  artistIds?: string[];
+  genreSlugs?: string[];
+  regionSlug?: string | null;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -43,10 +56,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [startSession],
   );
 
-  const register = useCallback(
-    async (input: { email: string; username: string; password: string; displayName?: string }) =>
-      startSession(await api<Session>('/auth/register', { method: 'POST', body: input })),
-    [startSession],
+  const requestInvite = useCallback(
+    (input: InviteRequest) => api<{ status: string; message: string }>('/auth/register', { method: 'POST', body: input }),
+    [],
   );
 
   const logout = useCallback(async () => {
@@ -57,8 +69,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [queryClient]);
 
   const value = useMemo(
-    () => ({ user, loading, login, register, logout, setUser: setUserState }),
-    [user, loading, login, register, logout],
+    () => ({ user, loading, login, requestInvite, logout, setUser: setUserState }),
+    [user, loading, login, requestInvite, logout],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

@@ -54,6 +54,12 @@ const registerSchema = z.object({
     .regex(/^[a-zA-Z0-9_.]+$/, 'Only letters, numbers, underscores and dots'),
   password: z.string().min(auth.passwordRule.min, 'Password must be at least 8 characters').max(auth.passwordRule.max),
   displayName: z.string().trim().max(50).optional(),
+  /** Everything below is the invite request: who they are and what they're into. */
+  note: z.string().trim().max(1000).nullish(),
+  instagramUrl: z.string().trim().max(200).nullish(),
+  artistIds: z.array(z.string().min(1)).max(20).optional(),
+  genreSlugs: z.array(z.string().min(1)).max(20).optional(),
+  regionSlug: z.string().trim().min(1).max(80).nullish(),
 });
 
 const loginSchema = z.object({
@@ -63,9 +69,14 @@ const loginSchema = z.object({
 
 export const authRouter = Router();
 
+/**
+ * Invite request. The site is invite-only, so this answers 202 with nothing to sign in
+ * with — the account waits in the admin queue until someone accepts it.
+ */
 authRouter.post('/register', authLimiter, async (req, res) => {
   const input = parse(registerSchema, req.body);
-  sendSession(req, res, await auth.register(input, req.get('user-agent')), 201);
+  await auth.requestInvite(input);
+  res.status(202).json({ status: 'PENDING', message: 'Request received. You can sign in once it has been accepted.' });
 });
 
 authRouter.post('/login', authLimiter, async (req, res) => {

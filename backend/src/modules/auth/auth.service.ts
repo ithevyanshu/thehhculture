@@ -40,42 +40,74 @@ async function issueTokens(user: { id: string; role: import('@prisma/client').Ro
   return { accessToken, refreshToken, refreshExpiresAt: expiresAt };
 }
 
-export async function register(
-  input: { email: string; username: string; password: string; displayName?: string },
-  userAgent?: string,
-) {
+export interface InviteRequest {
+  email: string;
+  username: string;
+  password: string;
+  displayName?: string;
+  /** Who they are and why they want in, for the admin reviewing the queue. */
+  note?: string | null;
+  instagramUrl?: string | null;
+  artistIds?: string[];
+  genreSlugs?: string[];
+  regionSlug?: string | null;
+}
+
+/**
+ * Asks to join. The site is invite-only, so this creates a PENDING account rather than
+ * signing anyone in.
+ *
+ * Their picks are stored as real follows and favourites right away: a pending account
+ * can't sign in, so the rows are harmless, and accepting the request is then a single
+ * flag rather than a replay of everything they chose.
+ */
+export async function requestInvite(input: InviteRequest) {
   const email = input.email.toLowerCase();
   const username = input.username.toLowerCase();
 
   const existing = await prisma.user.findFirst({
     where: { OR: [{ email }, { username }] },
-    select: { email: true },
+    select: { email: true, status: true },
   });
   if (existing) {
+    if (existing.status === 'PENDING') throw conflict('There is already a request with those details, still being reviewed');
     throw conflict(existing.email === email ? 'Email is already registered' : 'Username is taken');
   }
 
   const passwordHash = await bcrypt.hash(input.password, 12);
-  const user = await prisma.user.create({
-    data: { email, username, passwordHash, displayName: input.displayName?.trim() || input.username },
-    select: { id: true, role: true },
+  await prisma.user.create({
+    data: {
+      email,
+      username,
+      passwordHash,
+      displayName: input.displayName?.trim() || input.username,
+      status: 'PENDING',
+      inviteNote: input.note?.trim() || null,
+      instagramUrl: input.instagramUrl?.trim() || null,
+      onboarded: true, // they answered the taste questions in the request
+      follows: input.artistIds?.length ? { create: input.artistIds.map((artistId) => ({ artistId })) } : undefined,
+      favoriteGenres: input.genreSlugs?.length ? { connect: input.genreSlugs.map((slug) => ({ slug })) } : undefined,
+      favoriteRegions: input.regionSlug ? { connect: [{ slug: input.regionSlug }] } : undefined,
+    },
+    select: { id: true },
   });
-
-  const tokens = await issueTokens(user, userAgent);
-  return { user: (await getPublicUser(user.id))!, ...tokens };
+  return { status: 'PENDING' as const };
 }
 
 export async function login(input: { identifier: string; password: string }, userAgent?: string) {
   const identifier = input.identifier.toLowerCase();
   const user = await prisma.user.findFirst({
     where: { OR: [{ email: identifier }, { username: identifier }] },
-    select: { id: true, role: true, passwordHash: true, disabled: true },
+    select: { id: true, role: true, passwordHash: true, disabled: true, status: true, statusNote: true },
   });
 
   // Compare against a dummy hash when the user doesn't exist to keep timing uniform.
   const ok = await bcrypt.compare(input.password, user?.passwordHash ?? DUMMY_HASH);
   if (!user || !user.passwordHash || !ok) throw unauthorized('Invalid credentials');
   if (user.disabled) throw forbidden('This account has been disabled');
+  // Told only after the password checks out, so this can't be used to probe who applied.
+  if (user.status === 'PENDING') throw forbidden('Your request to join is still being reviewed.');
+  if (user.status === 'REJECTED') throw forbidden(user.statusNote || 'Your request to join was not accepted.');
 
   const tokens = await issueTokens(user, userAgent);
   return { user: (await getPublicUser(user.id))!, ...tokens };
@@ -85,7 +117,7 @@ export async function login(input: { identifier: string; password: string }, use
 export async function refresh(rawToken: string, userAgent?: string) {
   const record = await prisma.refreshToken.findUnique({
     where: { tokenHash: hashToken(rawToken) },
-    include: { user: { select: { id: true, role: true, disabled: true } } },
+    include: { user: { select: { id: true, role: true, disabled: true, status: true } } },
   });
   if (!record) throw unauthorized('Invalid refresh token');
 
@@ -96,6 +128,7 @@ export async function refresh(rawToken: string, userAgent?: string) {
     // older reuse is treated as theft and revokes every session.
     if (Date.now() - record.revokedAt.getTime() < REUSE_GRACE_MS) {
       if (record.user.disabled) throw forbidden('This account has been disabled');
+      if (record.user.status !== 'APPROVED') throw forbidden('This account is not active');
       if (record.expiresAt < new Date()) throw unauthorized('Refresh token expired');
       const tokens = await issueTokens(record.user, userAgent);
       return { user: (await getPublicUser(record.userId))!, ...tokens };
@@ -108,6 +141,7 @@ export async function refresh(rawToken: string, userAgent?: string) {
   }
   if (record.expiresAt < new Date()) throw unauthorized('Refresh token expired');
   if (record.user.disabled) throw forbidden('This account has been disabled');
+      if (record.user.status !== 'APPROVED') throw forbidden('This account is not active');
 
   await prisma.refreshToken.update({ where: { id: record.id }, data: { revokedAt: new Date() } });
   const tokens = await issueTokens(record.user, userAgent);

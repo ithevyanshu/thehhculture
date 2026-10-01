@@ -114,3 +114,87 @@ usersAdminRouter.post('/users/:id/reset-password', async (req, res) => {
   await loadTarget(req, id);
   res.json({ temporaryPassword: await resetPassword(id) });
 });
+
+// ---------- Invite requests ----------
+
+const requestSelect = {
+  id: true,
+  email: true,
+  username: true,
+  displayName: true,
+  status: true,
+  statusNote: true,
+  inviteNote: true,
+  instagramUrl: true,
+  createdAt: true,
+  reviewedAt: true,
+  reviewedBy: { select: { username: true } },
+  follows: { select: { artist: { select: { id: true, slug: true, name: true, handle: true, imageUrl: true } } } },
+  favoriteGenres: { select: { slug: true, name: true } },
+  favoriteRegions: { select: { slug: true, name: true } },
+} satisfies Prisma.UserSelect;
+
+/** Everyone who asked to join, newest first. */
+usersAdminRouter.get('/invites', async (req, res) => {
+  const { page, limit, status } = parse(
+    paginationSchema.extend({ status: z.enum(['PENDING', 'APPROVED', 'REJECTED']).default('PENDING') }),
+    req.query,
+  );
+  const where: Prisma.UserWhereInput = { status };
+  const [items, total, pending] = await Promise.all([
+    prisma.user.findMany({ where, orderBy: { createdAt: 'desc' }, select: requestSelect, ...paginate(page, limit) }),
+    prisma.user.count({ where }),
+    prisma.user.count({ where: { status: 'PENDING' } }),
+  ]);
+  res.json({ items, pending, meta: pageMeta(page, limit, total) });
+});
+
+/**
+ * Accept or turn down a request. The artists they picked are already stored as follows,
+ * so accepting is a flag: they sign in with what they chose and their feed is warm.
+ */
+usersAdminRouter.post('/invites/:id', async (req, res) => {
+  const { decision, note } = parse(
+    z.object({ decision: z.enum(['APPROVED', 'REJECTED']), note: z.string().trim().max(300).nullish() }),
+    req.body,
+  );
+  const id = param(req, 'id');
+  const target = await prisma.user.findUnique({ where: { id }, select: { id: true, status: true } });
+  if (!target) throw notFound('Request');
+  if (target.status !== 'PENDING') throw badRequest('That request has already been dealt with');
+
+  const user = await prisma.user.update({
+    where: { id },
+    data: { status: decision, statusNote: note?.trim() || null, reviewedAt: new Date(), reviewedById: currentUser(req).id },
+    select: requestSelect,
+  });
+  res.json({ user });
+});
+
+/** Let someone in directly, without them asking. Returns the password to pass on. */
+usersAdminRouter.post('/invites', async (req, res) => {
+  const input = parse(
+    z.object({
+      email: z.string().trim().email(),
+      username: z
+        .string()
+        .trim()
+        .min(3)
+        .max(24)
+        .regex(/^[a-zA-Z0-9_.]+$/, 'Only letters, numbers, underscores and dots'),
+      displayName: z.string().trim().max(50).optional(),
+    }),
+    req.body,
+  );
+  const email = input.email.toLowerCase();
+  const username = input.username.toLowerCase();
+  if (await prisma.user.findFirst({ where: { OR: [{ email }, { username }] }, select: { id: true } })) {
+    throw badRequest('Someone already has that email or username');
+  }
+  const created = await prisma.user.create({
+    data: { email, username, displayName: input.displayName?.trim() || username, status: 'APPROVED', reviewedAt: new Date(), reviewedById: currentUser(req).id },
+    select: { id: true, username: true, email: true },
+  });
+  // They must choose their own password on first sign-in.
+  res.status(201).json({ user: created, temporaryPassword: await resetPassword(created.id) });
+});
