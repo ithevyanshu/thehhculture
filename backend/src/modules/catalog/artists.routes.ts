@@ -14,6 +14,7 @@ import {
   withLikeFlags,
 } from './selects';
 import { recordArtistClick, trendingIds } from './views';
+import { querySearchLimiter } from '../../lib/rate-limit';
 
 export const artistsRouter = Router();
 
@@ -29,7 +30,7 @@ const listQuery = paginationSchema.extend({
   sort: z.enum(['trending', 'popular', 'name', 'new']).default('popular'),
 });
 
-artistsRouter.get('/', optionalAuth, async (req, res) => {
+artistsRouter.get('/', querySearchLimiter, optionalAuth, async (req, res) => {
   const { page, limit, q: rawQ, genre, region, featured, producer, sort, type } = parse(listQuery, req.query);
   const q = rawQ?.replace(/^@/, ''); // "@krsna" searches by handle
 

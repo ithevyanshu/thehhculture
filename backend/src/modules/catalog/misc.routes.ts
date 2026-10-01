@@ -4,6 +4,7 @@ import { prisma } from '../../lib/prisma';
 import { notFound, parse, param } from '../../lib/http';
 import { optionalAuth } from '../../middleware/auth';
 import { albumCardSelect, artistCardSelect, songCardSelect, withFollowFlags, withLikeFlags } from './selects';
+import { searchLimiter } from '../../lib/rate-limit';
 
 // ---------- Albums ----------
 
@@ -60,7 +61,7 @@ taxonomyRouter.get('/regions', async (_req, res) => {
 
 export const searchRouter = Router();
 
-searchRouter.get('/', optionalAuth, async (req, res) => {
+searchRouter.get('/', searchLimiter, optionalAuth, async (req, res) => {
   const { q } = parse(z.object({ q: z.string().trim().min(1).max(100) }), req.query);
   const contains = { contains: q, mode: 'insensitive' as const };
 

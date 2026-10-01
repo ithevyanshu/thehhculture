@@ -5,6 +5,7 @@ import { prisma } from '../../lib/prisma';
 import { notFound, pageMeta, paginate, paginationSchema, parse, param } from '../../lib/http';
 import { currentUser, optionalAuth, requireAuth } from '../../middleware/auth';
 import { recordView, songCardSelect, withLikeFlags } from './selects';
+import { querySearchLimiter } from '../../lib/rate-limit';
 
 export const songsRouter = Router();
 
@@ -17,7 +18,7 @@ const listQuery = paginationSchema.extend({
   sort: z.enum(['new', 'old', 'popular', 'title']).default('new'),
 });
 
-songsRouter.get('/', optionalAuth, async (req, res) => {
+songsRouter.get('/', querySearchLimiter, optionalAuth, async (req, res) => {
   const { page, limit, q, genre, artist, region, year, sort } = parse(listQuery, req.query);
 
   const and: Prisma.SongWhereInput[] = [];
