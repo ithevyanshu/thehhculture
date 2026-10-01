@@ -8,10 +8,14 @@ import { AddToPlaylistButton, LikeButton } from '../components/Buttons';
 import { EmbedPlayer } from '../components/EmbedPlayer';
 import { MissingHere, useSuggest } from '../components/Suggest';
 import { ErrorState, FitTitle, SectionHeader, Spinner } from '../components/ui';
+import { ShareButton } from '../components/ShareImage';
+import { useAuth } from '../auth/AuthContext';
+import { canShare } from '../lib/permissions';
 
 export function SongPage() {
   const openSuggest = useSuggest();
   const { slug = '' } = useParams();
+  const { user } = useAuth();
   const { data, isLoading, error, refetch } = useSong(slug);
 
   if (isLoading) return <Spinner />;
@@ -79,6 +83,17 @@ export function SongPage() {
               <a href={song.lyricsUrl} target="_blank" rel="noreferrer" className="chip">
                 Lyrics <ExternalLink size={12} />
               </a>
+            )}
+            {(canShare(user) || song.shareable) && (
+              <ShareButton
+                content={{
+                  kicker: 'New release',
+                  title: song.title,
+                  subtitle: song.artist.name,
+                  imageUrl: song.coverUrl ?? song.album?.coverUrl ?? null,
+                  url: `https://dhhculture.in/songs/${song.slug}`,
+                }}
+              />
             )}
           </div>
         </div>

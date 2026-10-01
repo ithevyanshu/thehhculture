@@ -126,6 +126,8 @@ export const artistSchema = z.object({
   featured: z.boolean().optional(),
   /** A duo, group or crew. Its members are artists in their own right. */
   isGroup: z.boolean().optional(),
+  /** Admin opt-in: lets visitors share this, not just staff. */
+  shareable: z.boolean().optional(),
   groupKind: nullableText(40),
   /** Member ids in billing order. Only meaningful when isGroup. */
   memberIds: z.array(z.string().min(1)).max(30).optional(),
@@ -244,6 +246,7 @@ export const songSchema = z.object({
   durationSec: nullableInt(1, 60 * 60),
   coverUrl: nullableUrl,
   explicit: z.boolean().optional(),
+  shareable: z.boolean().optional(),
   genreSlugs: z.array(z.string()).optional(),
   featureArtistIds: z.array(z.string()).optional(),
   /** Beat / production credits (the primary artist may self-produce). */

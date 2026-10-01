@@ -56,6 +56,8 @@ const eventSchema = z.object({
     .transform((v) => (typeof v === 'number' ? v : null)),
   status: z.nativeEnum(EventStatus).default('SCHEDULED'),
   featured: z.boolean().default(false),
+  /** Admin opt-in: lets visitors share this event, not just staff. */
+  shareable: z.boolean().default(false),
   /** Lineup in billing order; the first is the headliner. */
   artistIds: z.array(z.string().min(1)).max(40).default([]),
 });

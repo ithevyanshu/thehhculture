@@ -17,6 +17,13 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+enum AccountStatus {
+  /// Asked to join; cannot sign in until an admin accepts.
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 enum Role {
   USER
   ADMIN
@@ -44,6 +51,18 @@ model User {
   role         Role     @default(USER)
   onboarded    Boolean  @default(false)
   disabled     Boolean  @default(false) // blocked by an admin: cannot sign in or refresh
+  /// Invite pipeline. Existing accounts default to APPROVED; new requests set PENDING.
+  status       AccountStatus @default(APPROVED)
+  /// Why a request was turned down, shown to them when they try to sign in.
+  statusNote   String?
+  /// From the request form: who they are and why they want in.
+  inviteNote   String?
+  /// Their Instagram, so an admin can see who is asking.
+  instagramUrl String?
+  reviewedAt   DateTime?
+  reviewedById String?
+  reviewedBy   User?    @relation("InviteReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewed     User[]   @relation("InviteReviewer")
   /// SUB_ADMIN only: admin sections they may use (see src/lib/permissions.ts).
   permissions  String[] @default([])
   /// Set by an admin password reset: the user must choose a new password after signing in.
@@ -180,6 +199,8 @@ model Artist {
   featured     Boolean  @default(false)
   /// A duo, group or crew rather than one person: the page leads with its members.
   isGroup      Boolean  @default(false)
+  /// Admin opt-in: when true, visitors (not just staff) get the Instagram share button.
+  shareable    Boolean  @default(false)
   /// What kind, in their own words: "Duo", "Crew", "Collective". Shown on the card.
   groupKind    String?
   viewCount    Int      @default(0) // all-time de-duplicated profile opens
@@ -283,6 +304,8 @@ model Song {
   durationSec    Int?
   coverUrl       String?
   explicit       Boolean   @default(false)
+  /// Admin opt-in: when true, visitors (not just staff) get the Instagram share button.
+  shareable      Boolean   @default(false)
   spotifyTrackId String?   @unique
   /// iTunes track id: lets an import skip songs it already added.
   itunesTrackId  String?   @unique
@@ -407,6 +430,8 @@ model Event {
   priceFrom   Int?
   status      EventStatus @default(SCHEDULED)
   featured    Boolean     @default(false)
+  /// Admin opt-in: when true, visitors (not just staff) get the Instagram share button.
+  shareable   Boolean     @default(false)
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 

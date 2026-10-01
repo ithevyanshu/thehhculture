@@ -10,6 +10,9 @@ import { MissingHere, useSuggest } from '../components/Suggest';
 import { InstagramLink } from '../components/Instagram';
 import { PostCard } from '../components/PostCard';
 import { EventRow } from '../components/EventCards';
+import { ShareButton } from '../components/ShareImage';
+import { useAuth } from '../auth/AuthContext';
+import { canShare } from '../lib/permissions';
 import { SHOW_ROLE_LABEL, type Membership, type ShowAppearance, type ShowRole } from '../lib/types';
 import { Empty, ErrorState, FitTitle, Pagination, SectionHeader, Shelf, Spinner } from '../components/ui';
 
@@ -101,6 +104,7 @@ function groupAppearances(appearances: ShowAppearance[]) {
 export function ArtistPage() {
   const openSuggest = useSuggest();
   const { slug = '' } = useParams();
+  const { user } = useAuth();
   const { data, isLoading, error, refetch } = useArtist(slug);
 
   if (isLoading) return <Spinner />;
@@ -188,6 +192,17 @@ export function ArtistPage() {
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <FollowButton slug={artist.slug} isFollowing={artist.isFollowing} />
             {artist.instagramUrl && <InstagramLink url={artist.instagramUrl} />}
+            {(canShare(user) || artist.shareable) && (
+              <ShareButton
+                content={{
+                  kicker: artist.isGroup ? (artist.groupKind ?? 'Group') : 'Artist',
+                  title: artist.name,
+                  subtitle: at(artist),
+                  imageUrl: artist.imageUrl,
+                  url: `https://dhhculture.in/artists/${artist.slug}`,
+                }}
+              />
+            )}
             {links.map((l) => (
               <a key={l.label} href={l.href} target="_blank" rel="noreferrer" className="btn-ghost !px-3 !py-2">
                 {l.label} <ExternalLink size={12} />

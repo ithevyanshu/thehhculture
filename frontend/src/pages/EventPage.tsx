@@ -4,6 +4,9 @@ import { useEvent } from '../lib/queries';
 import { Artwork } from '../components/Artwork';
 import { EventRow, EventStatusTag } from '../components/EventCards';
 import { ErrorState, FitTitle, SectionHeader, Spinner } from '../components/ui';
+import { ShareButton } from '../components/ShareImage';
+import { useAuth } from '../auth/AuthContext';
+import { canShare } from '../lib/permissions';
 import { at, eventCountdown, eventDay, eventTime, eventWhen } from '../lib/format';
 import type { ArtistRef } from '../lib/types';
 
@@ -23,6 +26,7 @@ function LineupTile({ artist, billing }: { artist: ArtistRef; billing: string | 
 
 export function EventPage() {
   const { slug = '' } = useParams();
+  const { user } = useAuth();
   const { data, isLoading, error, refetch } = useEvent(slug);
   if (isLoading) return <Spinner />;
   if (error || !data) return <ErrorState error={error} retry={refetch} />;
@@ -75,6 +79,20 @@ export function EventPage() {
               )}
               {event.priceFrom !== null && <span className="mono text-muted">from ₹{event.priceFrom}</span>}
               {event.status === 'POSTPONED' && <span className="mono text-muted">New date to be announced</span>}
+            </div>
+          )}
+
+          {(canShare(user) || event.shareable) && (
+            <div className="mt-4">
+              <ShareButton
+                content={{
+                  kicker: event.kind || 'Live',
+                  title: event.title,
+                  subtitle: [eventWhen(event), event.venue, event.region?.name].filter(Boolean).join(' · '),
+                  imageUrl: event.posterUrl,
+                  url: `https://dhhculture.in/events/${event.slug}`,
+                }}
+              />
             </div>
           )}
 

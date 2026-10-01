@@ -373,6 +373,7 @@ const emptyArtist = {
   featured: false,
   isProducer: false,
   isGroup: false,
+  shareable: false,
   groupKind: '',
   instagramUrl: '',
   youtubeUrl: '',
@@ -514,6 +515,9 @@ export function ArtistForm({ id, onDone, studio }: { id: string | null; onDone: 
           </label>
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={form.isGroup} onChange={(e) => setForm({ ...form, isGroup: e.target.checked })} /> Group / duo / crew
+          </label>
+          <label className="flex items-center gap-2 text-sm" title="Shows the Instagram share button to visitors too, not just staff.">
+            <input type="checkbox" checked={form.shareable} onChange={(e) => setForm({ ...form, shareable: e.target.checked })} /> Anyone can share
           </label>
         </div>
       )}
@@ -670,6 +674,7 @@ const emptySong = {
   durationSec: '' as string | number,
   coverUrl: '',
   explicit: false,
+  shareable: false,
   genreSlugs: [] as string[],
   features: [] as HandleRef[],
   producers: [] as HandleRef[],
@@ -823,6 +828,9 @@ export function SongForm({ id, onDone, studio }: { id: string | null; onDone: (r
       </div>
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" checked={form.explicit} onChange={(e) => setForm({ ...form, explicit: e.target.checked })} /> Explicit
+      </label>
+      <label className="flex items-center gap-2 text-sm" title="Shows the Instagram share button to visitors too, not just staff.">
+        <input type="checkbox" checked={form.shareable} onChange={(e) => setForm({ ...form, shareable: e.target.checked })} /> Anyone can share
       </label>
       <FormActions busy={busy} error={error} onCancel={() => onDone(undefined)} />
     </form>

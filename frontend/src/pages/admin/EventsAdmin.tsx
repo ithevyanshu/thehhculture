@@ -28,6 +28,7 @@ interface AdminEvent {
   priceFrom: number | null;
   status: EventStatus;
   featured: boolean;
+  shareable: boolean;
   lineup: { order: number; artist: HandleRef & { imageUrl?: string | null } }[];
 }
 
@@ -67,6 +68,7 @@ const blank = {
   priceFrom: '',
   status: 'SCHEDULED' as EventStatus,
   featured: false,
+  shareable: false,
 };
 
 function EventForm({ event, onDone }: { event: AdminEvent | null; onDone: () => void }) {
@@ -98,6 +100,7 @@ function EventForm({ event, onDone }: { event: AdminEvent | null; onDone: () => 
       priceFrom: event.priceFrom === null ? '' : String(event.priceFrom),
       status: event.status,
       featured: event.featured,
+      shareable: event.shareable,
     });
     setLineup(event.lineup.map((l) => l.artist));
   }, [event]);
@@ -159,6 +162,9 @@ function EventForm({ event, onDone }: { event: AdminEvent | null; onDone: () => 
           <label className="mono flex items-center gap-2">
             <input type="checkbox" checked={form.featured} onChange={(e) => setForm({ ...form, featured: e.target.checked })} /> Feature it (poster on the
             events page)
+          </label>
+          <label className="mono flex items-center gap-2" title="Shows the Instagram share button to visitors too, not just staff.">
+            <input type="checkbox" checked={form.shareable} onChange={(e) => setForm({ ...form, shareable: e.target.checked })} /> Anyone can share
           </label>
           <label className="mono flex items-center gap-2">
             Status

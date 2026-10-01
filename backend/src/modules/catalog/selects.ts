@@ -14,6 +14,7 @@ export const artistCardSelect = {
   /** Duo, group or crew: the card and page lead with its members. */
   isGroup: true,
   groupKind: true,
+  shareable: true,
   instagramUrl: true,
   region: { select: { slug: true, name: true } },
   genres: { select: { slug: true, name: true } },
@@ -28,6 +29,7 @@ export const songCardSelect = {
   releaseDate: true,
   durationSec: true,
   explicit: true,
+  shareable: true,
   spotifyTrackId: true,
   youtubeVideoId: true,
   artist: { select: { id: true, slug: true, name: true, handle: true, imageUrl: true } },

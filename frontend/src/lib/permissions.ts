@@ -18,6 +18,9 @@ export type Permission = (typeof PERMISSIONS)[number]['value'];
 /** Admins and sub-admins get the admin panel. */
 export const isStaff = (user: User | null | undefined) => user?.role === 'ADMIN' || user?.role === 'SUB_ADMIN';
 
+/** Who sees the "share to Instagram" tool: staff, and artists who run a profile. */
+export const canShare = (user: User | null | undefined) => isStaff(user) || !!user?.managedArtist;
+
 /** Full admins can do everything; sub-admins only what they were granted. */
 export const can = (user: User | null | undefined, permission: Permission) =>
   user?.role === 'ADMIN' || (user?.role === 'SUB_ADMIN' && user.permissions.includes(permission));

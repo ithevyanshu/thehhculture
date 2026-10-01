@@ -21,6 +21,7 @@ export const eventCardSelect = {
   priceFrom: true,
   status: true,
   featured: true,
+  shareable: true,
   region: { select: { slug: true, name: true } },
   lineup: {
     orderBy: { order: 'asc' as const },
